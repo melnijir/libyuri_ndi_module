@@ -34,7 +34,7 @@ core::Parameters Scale::configure()
 }
 
 Scale::Scale(const log::Log& log_, core::pwThreadBase parent, const core::Parameters& parameters)
-    : base_type(log_, parent, std::string("scale")), event::BasicEventConsumer(log), resolution_(resolution_t{ 800, 600 }), fast_(true), threads_{ 1 }
+    : base_type(log_, parent, std::string("ndi_scale")), event::BasicEventConsumer(log), resolution_(resolution_t{ 800, 600 }), fast_(true), threads_{ 1 }
 {
     IOTHREAD_INIT(parameters)
     using namespace core::raw_format;

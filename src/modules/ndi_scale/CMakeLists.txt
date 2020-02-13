@@ -1,5 +1,5 @@
 # Set name of the module
-SET (MODULE scale)
+SET (MODULE ndi_scale)
 
 # Set all source files module uses
 SET (SRC Scale.cpp

@@ -1,6 +1,5 @@
-cmake_minimum_required (VERSION 2.8.0)
-PROJECT(yuri2 CXX)
-ENABLE_LANGUAGE(C)
+cmake_minimum_required(VERSION 3.0)
+PROJECT(yuri2_ndi VERSION 0.0.1 LANGUAGES CXX C)
 
 OPTION (BUILD_SHARED_LIBS "Build shared libraries." ON)
 
@@ -23,7 +22,8 @@ find_package(NDI REQUIRED)
 #################################################################
 # Get the version of this build
 #################################################################
-git_describe(YURI_GIT_VERSION)
+#git_describe(YURI_GIT_VERSION)
+
 
 #################################################################
 # Add strict warning if building under linux
@@ -58,3 +58,13 @@ SET (TARGET_MODULE_PATH lib/yuri2/)
 add_subdirectory(src)
 
 
+SET(CPACK_GENERATOR "DEB")
+SET(CPACK_PACKAGE_VENDOR "Melnikoff")
+SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Kafe")
+
+SET(CPACK_DEBIAN_PACKAGE_DEPENDS "yuri2, ndi")
+# Explicitely setting verson for comatibility with old cmake
+SET(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+SET(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+SET(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+INCLUDE(CPack)
