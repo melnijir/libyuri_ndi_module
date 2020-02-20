@@ -246,8 +246,12 @@ void NDIInput::emit_events() {
 }
 
 bool NDIInput::do_process_event(const std::string& event_name, const event::pBasicEvent& event) {
-	log[log::info] << "Got unknown event \"" << event_name << "\" in time: " << event->get_timestamp();
-	return true;
+	if (iequals(event_name, "quit")) {
+        request_end(core::yuri_exit_interrupted);
+        return true;
+    }
+	log[log::info] << "Got unknown event \"" << event_name << "\", timestamp: " << event->get_timestamp();
+	return false;
 }
 
 bool NDIInput::set_param(const core::Parameter &param) {
