@@ -41,6 +41,10 @@ namespace ndi {
 
 typedef unsigned char byte;
 
+const size_t limited_outputs = 1;
+const size_t limited_streams = 1;
+const size_t limited_resolution = 1080;
+
 struct LicenceCaps {
     size_t version;
     std::string name;

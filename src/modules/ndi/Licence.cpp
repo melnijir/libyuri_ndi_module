@@ -99,7 +99,18 @@ void Licence::set_licence_file(const std::string path) {
     std::lock_guard<std::mutex> guard(licence_lock_);
     if (licence_path_.empty()) {
         licence_path_ = path;
-        licence_data_ = get_license_from_file(licence_path_);
+        try {
+            licence_data_ = get_license_from_file(licence_path_);
+        } catch(const std::exception& e) {
+            licence_data_.ifname = "any";
+            licence_data_.mac_address = "00:00:00:00:00:00";
+            licence_data_.caps.date = "0000-00-00";
+            licence_data_.caps.level = "basic";
+            licence_data_.caps.name = "unlicensed";
+            licence_data_.caps.outputs = limited_outputs;
+            licence_data_.caps.resolution = limited_resolution;
+            licence_data_.caps.streams = limited_streams;
+        }
     }
 }
 
