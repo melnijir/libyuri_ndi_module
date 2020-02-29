@@ -186,6 +186,8 @@ void NDIInput::run() {
 				y_video_frame = core::RawVideoFrame::create_empty(y_video_format, {(uint32_t)n_video_frame.xres, (uint32_t)n_video_frame.yres}, true);
 				std::copy(n_video_frame.p_data, n_video_frame.p_data + n_video_frame.yres * n_video_frame.line_stride_in_bytes, PLANE_DATA(y_video_frame, 0).begin());
 				NDIlib_recv_free_video_v2(ndi_receiver, &n_video_frame);
+				emit_event("timecode", n_video_frame.timecode);
+				emit_event("timestamp", n_video_frame.timestamp);
 				push_frame(0,y_video_frame);
 				break;
 			// Audio data
