@@ -105,7 +105,7 @@ void Licence::set_licence_file(const std::string path) {
             licence_data_.ifname = "any";
             licence_data_.mac_address = "00:00:00:00:00:00";
             licence_data_.caps.date = "0000-00-00";
-            licence_data_.caps.level = "basic";
+            licence_data_.caps.level = "unlicensed";
             licence_data_.caps.name = "unlicensed";
             licence_data_.caps.outputs = limited_outputs;
             licence_data_.caps.resolution = limited_resolution;
