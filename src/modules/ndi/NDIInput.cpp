@@ -21,6 +21,8 @@
 namespace yuri {
 namespace ndi {
 
+using namespace std::chrono;
+
 IOTHREAD_GENERATOR(NDIInput)
 
 core::Parameters NDIInput::configure() {
@@ -172,6 +174,8 @@ void NDIInput::run() {
 			core::pRawVideoFrame y_video_frame;
 			// Yuri Audio
 			core::pRawAudioFrame y_audio_frame;
+			// Yuri timestamp
+			time_point<high_resolution_clock, nanoseconds> y_timestamp;
 			// Receive
 			switch (NDIlib_recv_capture_v2(ndi_receiver, &n_video_frame, &n_audio_frame, &metadata_frame, 1000)) {
 			// No data
@@ -185,9 +189,11 @@ void NDIInput::run() {
 				y_video_format = ndi_format_to_yuri(n_video_frame.FourCC);
 				y_video_frame = core::RawVideoFrame::create_empty(y_video_format, {(uint32_t)n_video_frame.xres, (uint32_t)n_video_frame.yres}, true);
 				std::copy(n_video_frame.p_data, n_video_frame.p_data + n_video_frame.yres * n_video_frame.line_stride_in_bytes, PLANE_DATA(y_video_frame, 0).begin());
-				NDIlib_recv_free_video_v2(ndi_receiver, &n_video_frame);
+				y_timestamp = time_point<high_resolution_clock, nanoseconds>(nanoseconds(n_video_frame.timestamp*100));
+				y_video_frame->set_timestamp(y_timestamp);
 				emit_event("timecode", n_video_frame.timecode);
 				emit_event("timestamp", n_video_frame.timestamp);
+				NDIlib_recv_free_video_v2(ndi_receiver, &n_video_frame);
 				push_frame(0,y_video_frame);
 				break;
 			// Audio data
