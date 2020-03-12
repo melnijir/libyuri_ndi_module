@@ -38,7 +38,7 @@ core::Parameters NDIInput::configure() {
 NDIInput::NDIInput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,0,1,std::string("NDIInput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),audio_pipe_(-1),interval_(1_s),licence_("") {
+stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),audio_pipe_(-1),interval_(1_s),licence_(""),ptz_supported_(false) {
 	IOTHREAD_INIT(parameters)
 	// Check licence
 	lic_ = &Licence::getInstance();
@@ -142,8 +142,8 @@ void NDIInput::run() {
 		receiver_desc.bandwidth = NDIlib_recv_bandwidth_highest;
 
 
-		NDIlib_recv_instance_t ndi_receiver = NDIlib_recv_create_v3(&receiver_desc);
-		if (!ndi_receiver) {
+		ndi_receiver_ = NDIlib_recv_create_v3(&receiver_desc);
+		if (!ndi_receiver_) {
 			log[log::fatal] << "Failed to initialize NDI receiver.";
 			throw exception::InitializationFailed("Failed to initialize NDI receiver.");
 		}
@@ -152,11 +152,11 @@ void NDIInput::run() {
 		NDIlib_tally_t tally_state;
 		tally_state.on_program = true;
 		tally_state.on_preview = true;
-		NDIlib_recv_set_tally(ndi_receiver, &tally_state);
+		NDIlib_recv_set_tally(ndi_receiver_, &tally_state);
 
 		NDIlib_metadata_frame_t enable_hw_accel;
 		enable_hw_accel.p_data = (char*)"<ndi_hwaccel enabled=\"true\"/>";
-		NDIlib_recv_send_metadata(ndi_receiver, &enable_hw_accel);
+		NDIlib_recv_send_metadata(ndi_receiver_, &enable_hw_accel);
 
 		// Prepare timer for events
 		timer_.reset();
@@ -177,7 +177,7 @@ void NDIInput::run() {
 			// Yuri timestamp
 			time_point<high_resolution_clock, nanoseconds> y_timestamp;
 			// Receive
-			switch (NDIlib_recv_capture_v2(ndi_receiver, &n_video_frame, &n_audio_frame, &metadata_frame, 1000)) {
+			switch (NDIlib_recv_capture_v2(ndi_receiver_, &n_video_frame, &n_audio_frame, &metadata_frame, 1000)) {
 			// No data
 			case NDIlib_frame_type_none:
 				log[log::debug] << "No data received.";
@@ -193,7 +193,7 @@ void NDIInput::run() {
 				y_video_frame->set_timestamp(y_timestamp);
 				emit_event("timecode", n_video_frame.timecode);
 				emit_event("timestamp", n_video_frame.timestamp);
-				NDIlib_recv_free_video_v2(ndi_receiver, &n_video_frame);
+				NDIlib_recv_free_video_v2(ndi_receiver_, &n_video_frame);
 				push_frame(0,y_video_frame);
 				break;
 			// Audio data
@@ -211,17 +211,24 @@ void NDIInput::run() {
 					// Free the interleaved audio data
 					delete[] n_audio_frame_16bpp_interleaved.p_data;
 				}
-				NDIlib_recv_free_audio_v2(ndi_receiver, &n_audio_frame);
+				NDIlib_recv_free_audio_v2(ndi_receiver_, &n_audio_frame);
 				break;
 			// Meta data
 			case NDIlib_frame_type_metadata:
 				log[log::debug] << "Metadata received.";
 				stream_fail = 0;
-				NDIlib_recv_free_metadata(ndi_receiver, &metadata_frame);
+				NDIlib_recv_free_metadata(ndi_receiver_, &metadata_frame);
 				break;
 			// There is a status change on the receiver (e.g. new web interface)
 			case NDIlib_frame_type_status_change:
-				log[log::debug] << "Receiver connection status changed.";
+				log[log::debug] << "Sender connection status changed.";
+				if (NDIlib_recv_ptz_is_supported(ndi_receiver_)) {
+					log[log::info] << "Sender supports PTZ, enabling events.";
+					ptz_supported_ = true;
+				} else {
+					log[log::info] << "Sender doest not support PTZ, disabling events.";
+					ptz_supported_ = false;
+				}
 				stream_fail = 0;
 				break;
 			// Everything else
@@ -242,7 +249,7 @@ void NDIInput::run() {
 		log[log::info] << "Stopping receiver";
 
 		// Get it out
-		NDIlib_recv_destroy(ndi_receiver);
+		NDIlib_recv_destroy(ndi_receiver_);
 		NDIlib_destroy();
 	}
 
@@ -257,8 +264,72 @@ bool NDIInput::do_process_event(const std::string& event_name, const event::pBas
 	if (iequals(event_name, "quit")) {
         request_end(core::yuri_exit_interrupted);
         return true;
-    }
-	log[log::info] << "Got unknown event \"" << event_name << "\", timestamp: " << event->get_timestamp();
+    } else if (iequals(event_name,"recall_preset")) {
+		if (event->get_type() == event::event_type_t::vector_event) {
+			auto val = event::get_value<event::EventVector>(event);
+        	if(val.size() < 2) return false;
+			NDIlib_recv_ptz_recall_preset(ndi_receiver_, event::lex_cast_value<int>(val[0]), event::lex_cast_value<float>(val[1]));
+		} else {
+			auto val = event::get_value<event::EventInt>(event);
+			NDIlib_recv_ptz_recall_preset(ndi_receiver_, val, 1.0);
+		}
+	} else if (iequals(event_name,"store_preset")) {
+		auto val = event::get_value<event::EventInt>(event);
+		NDIlib_recv_ptz_store_preset(ndi_receiver_, val);
+	} else if (iequals(event_name,"zoom")) {
+		auto val = event::get_value<event::EventDouble>(event);
+		NDIlib_recv_ptz_zoom(ndi_receiver_, val);
+	} else if (iequals(event_name,"zoom_speed")) {
+		auto val = event::get_value<event::EventDouble>(event);
+		NDIlib_recv_ptz_zoom_speed(ndi_receiver_, val);
+	} else if (iequals(event_name,"pan_tilt")) {
+		if (event->get_type() == event::event_type_t::vector_event) {
+			auto val = event::get_value<event::EventVector>(event);
+			if(val.size() < 2) return false;
+			NDIlib_recv_ptz_pan_tilt(ndi_receiver_, event::lex_cast_value<float>(val[0]), event::lex_cast_value<float>(val[1]));
+		} else {
+			log[log::info] << "Got pan_tilt event in wrong format, must be vector of two floats <-1..0..1>.";
+		}
+	} else if (iequals(event_name,"pan_tilt_speed")) {
+		if (event->get_type() == event::event_type_t::vector_event) {
+			auto val = event::get_value<event::EventVector>(event);
+			if(val.size() < 2) return false;
+			NDIlib_recv_ptz_pan_tilt_speed(ndi_receiver_, event::lex_cast_value<float>(val[0]), event::lex_cast_value<float>(val[1]));
+		} else {
+			log[log::info] << "Got pan_tilt_speed event in wrong format, must be vector of two floats <-1..0..1>.";
+		}
+	} else if (iequals(event_name,"auto_focus")) {
+		NDIlib_recv_ptz_auto_focus(ndi_receiver_);
+	} else if (iequals(event_name,"focus")) {
+		auto val = event::get_value<event::EventDouble>(event);
+		NDIlib_recv_ptz_focus(ndi_receiver_, val);
+	} else if (iequals(event_name,"focus_speed")) {
+		auto val = event::get_value<event::EventDouble>(event);
+		NDIlib_recv_ptz_focus_speed(ndi_receiver_, val);
+	} else if (iequals(event_name,"white_balance_auto")) {
+		NDIlib_recv_ptz_white_balance_auto(ndi_receiver_);
+	} else if (iequals(event_name,"white_balance_indoor")) {
+		NDIlib_recv_ptz_white_balance_indoor(ndi_receiver_);
+	} else if (iequals(event_name,"white_balance_outdoor")) {
+		NDIlib_recv_ptz_white_balance_outdoor(ndi_receiver_);
+	} else if (iequals(event_name,"white_balance_oneshot")) {
+		NDIlib_recv_ptz_white_balance_oneshot(ndi_receiver_);
+	} else if (iequals(event_name,"white_balance_manual")) {
+		if (event->get_type() == event::event_type_t::vector_event) {
+			auto val = event::get_value<event::EventVector>(event);
+			if(val.size() < 2) return false;
+			NDIlib_recv_ptz_white_balance_manual(ndi_receiver_, event::lex_cast_value<float>(val[0]), event::lex_cast_value<float>(val[1]));
+		} else {
+			log[log::info] << "Got white_balance_manual event in wrong format, must be vector of two floats <-1..0..1>.";
+		}
+	} else if (iequals(event_name,"exposure_auto")) {
+		NDIlib_recv_ptz_exposure_auto(ndi_receiver_);
+	} else if (iequals(event_name,"exposure_manual")) {
+		auto val = event::get_value<event::EventDouble>(event);
+		NDIlib_recv_ptz_exposure_manual(ndi_receiver_, val);
+	} else {
+		log[log::info] << "Got unknown event \"" << event_name << "\", timestamp: " << event->get_timestamp();
+	}
 	return false;
 }
 

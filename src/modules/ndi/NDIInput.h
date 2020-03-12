@@ -49,7 +49,9 @@ private:
 	Licence* lic_;
 	std::string licence_;
 
+	NDIlib_recv_instance_t ndi_receiver_;
 	NDIlib_find_instance_t ndi_finder_;
+	bool ptz_supported_;
 };
 
 }
