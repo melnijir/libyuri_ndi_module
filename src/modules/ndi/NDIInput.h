@@ -47,7 +47,10 @@ private:
 	Timer timer_;
 
 	Licence* lic_;
+	LicenceCaps caps_;
 	std::string licence_;
+	bool licence_display_;
+	bool licence_required_;
 
 	NDIlib_recv_instance_t ndi_receiver_;
 	NDIlib_find_instance_t ndi_finder_;
