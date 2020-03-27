@@ -56,7 +56,9 @@ core::Parameters NDIInput::configure() {
 NDIInput::NDIInput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,0,1,std::string("NDIInput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),audio_pipe_(-1),interval_(3_s),licence_(""),licence_display_(false),licence_required_(false),ptz_supported_(false) {
+stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),audio_pipe_(-1),
+interval_(3_s),licence_(""),licence_display_(false),licence_required_(false),ptz_supported_(false),
+last_pan_val_(0),last_tilt_val_(0),last_pan_speed_(0),last_tilt_speed_(0) {
 	IOTHREAD_INIT(parameters)
 	// Check licence
 	lic_ = &Licence::getInstance();
@@ -314,18 +316,34 @@ bool NDIInput::do_process_event(const std::string& event_name, const event::pBas
 			if (event->get_type() == event::event_type_t::vector_event) {
 				auto val = event::get_value<event::EventVector>(event);
 				if(val.size() < 2) return false;
-				NDIlib_recv_ptz_pan_tilt(ndi_receiver_, event::lex_cast_value<float>(val[0]), event::lex_cast_value<float>(val[1]));
+				last_pan_val_ = event::lex_cast_value<float>(val[0]);
+				last_tilt_val_ = event::lex_cast_value<float>(val[1]);
+				NDIlib_recv_ptz_pan_tilt(ndi_receiver_, last_pan_val_, last_tilt_val_);
 			} else {
 				log[log::info] << "Got pan_tilt event in wrong format, must be vector of two floats <-1..0..1>.";
 			}
+		} else if (iequals(event_name,"pan")) {
+			last_pan_val_ = event::get_value<event::EventDouble>(event);
+			NDIlib_recv_ptz_pan_tilt(ndi_receiver_, last_pan_val_, last_tilt_val_);
+		} else if (iequals(event_name,"tilt")) {
+			last_tilt_val_ = event::get_value<event::EventDouble>(event);
+			NDIlib_recv_ptz_pan_tilt(ndi_receiver_, last_pan_val_, last_tilt_val_);
 		} else if (iequals(event_name,"pan_tilt_speed")) {
 			if (event->get_type() == event::event_type_t::vector_event) {
 				auto val = event::get_value<event::EventVector>(event);
 				if(val.size() < 2) return false;
-				NDIlib_recv_ptz_pan_tilt_speed(ndi_receiver_, event::lex_cast_value<float>(val[0]), event::lex_cast_value<float>(val[1]));
+				last_pan_speed_ = event::lex_cast_value<float>(val[0]);
+				last_tilt_speed_ = event::lex_cast_value<float>(val[1]);
+				NDIlib_recv_ptz_pan_tilt_speed(ndi_receiver_, last_pan_speed_, last_tilt_speed_);
 			} else {
 				log[log::info] << "Got pan_tilt_speed event in wrong format, must be vector of two floats <-1..0..1>.";
 			}
+		} else if (iequals(event_name,"pan_speed")) {
+			last_pan_speed_ = event::get_value<event::EventDouble>(event);
+			NDIlib_recv_ptz_pan_tilt(ndi_receiver_, last_pan_speed_, last_tilt_speed_);
+		} else if (iequals(event_name,"tilt_speed")) {
+			last_tilt_speed_ = event::get_value<event::EventDouble>(event);
+			NDIlib_recv_ptz_pan_tilt(ndi_receiver_, last_pan_speed_, last_tilt_speed_);
 		} else if (iequals(event_name,"auto_focus")) {
 			NDIlib_recv_ptz_auto_focus(ndi_receiver_);
 		} else if (iequals(event_name,"focus")) {

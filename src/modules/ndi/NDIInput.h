@@ -55,6 +55,11 @@ private:
 	NDIlib_recv_instance_t ndi_receiver_;
 	NDIlib_find_instance_t ndi_finder_;
 	bool ptz_supported_;
+
+	float last_pan_val_;
+	float last_tilt_val_;
+	float last_pan_speed_;
+	float last_tilt_speed_;
 };
 
 }
