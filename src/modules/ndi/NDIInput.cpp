@@ -39,6 +39,16 @@ void draw_licence(T2* frame, size_t lines, size_t line_size) {
 		s += size;
 	}
 }
+float get_event_float(const event::pBasicEvent& event) {
+	switch(event->get_type()) {
+	case event::event_type_t::integer_event:
+		return (float)event::get_value<event::EventInt>(event);
+	case event::event_type_t::double_event:
+		return (float)event::get_value<event::EventDouble>(event);
+	default:
+		return 0;
+	}
+}
 }
 
 IOTHREAD_GENERATOR(NDIInput)
@@ -215,7 +225,7 @@ void NDIInput::run() {
 				emit_event("timestamp", n_video_frame.timestamp);
 				NDIlib_recv_free_video_v2(ndi_receiver_, &n_video_frame);
 				// Insert licence warning
-				if (licence_required_ && licence_display_)
+				if (licence_required_ && licence_display_ && caps_.level == "unlicensed")
 					draw_licence<uint8_t>(PLANE_DATA(y_video_frame, 0).begin(), y_video_frame->get_height(), y_video_frame->get_width()*core::raw_format::get_fmt_bpp(y_video_frame->get_format(),0)/8);
 				// Push frame out
 				push_frame(0,y_video_frame);
@@ -307,10 +317,11 @@ bool NDIInput::do_process_event(const std::string& event_name, const event::pBas
 			auto val = event::get_value<event::EventInt>(event);
 			NDIlib_recv_ptz_store_preset(ndi_receiver_, val);
 		} else if (iequals(event_name,"zoom")) {
-			auto val = event::get_value<event::EventDouble>(event);
+			auto val = get_event_float(event);
 			NDIlib_recv_ptz_zoom(ndi_receiver_, val);
 		} else if (iequals(event_name,"zoom_speed")) {
-			auto val = event::get_value<event::EventDouble>(event);
+			auto val = get_event_float(event);
+			if (val < -1 || val > 1) val = 0;
 			NDIlib_recv_ptz_zoom_speed(ndi_receiver_, val);
 		} else if (iequals(event_name,"pan_tilt")) {
 			if (event->get_type() == event::event_type_t::vector_event) {
@@ -323,10 +334,10 @@ bool NDIInput::do_process_event(const std::string& event_name, const event::pBas
 				log[log::info] << "Got pan_tilt event in wrong format, must be vector of two floats <-1..0..1>.";
 			}
 		} else if (iequals(event_name,"pan")) {
-			last_pan_val_ = event::get_value<event::EventDouble>(event);
+			last_pan_val_ = get_event_float(event);
 			NDIlib_recv_ptz_pan_tilt(ndi_receiver_, last_pan_val_, last_tilt_val_);
 		} else if (iequals(event_name,"tilt")) {
-			last_tilt_val_ = event::get_value<event::EventDouble>(event);
+			last_tilt_val_ = get_event_float(event);
 			NDIlib_recv_ptz_pan_tilt(ndi_receiver_, last_pan_val_, last_tilt_val_);
 		} else if (iequals(event_name,"pan_tilt_speed")) {
 			if (event->get_type() == event::event_type_t::vector_event) {
@@ -339,18 +350,20 @@ bool NDIInput::do_process_event(const std::string& event_name, const event::pBas
 				log[log::info] << "Got pan_tilt_speed event in wrong format, must be vector of two floats <-1..0..1>.";
 			}
 		} else if (iequals(event_name,"pan_speed")) {
-			last_pan_speed_ = event::get_value<event::EventDouble>(event);
-			NDIlib_recv_ptz_pan_tilt(ndi_receiver_, last_pan_speed_, last_tilt_speed_);
+			last_pan_speed_ = get_event_float(event);
+			log[log::info] << "pan_speed: [" << last_pan_speed_ << "," << last_tilt_speed_ << "]";
+			NDIlib_recv_ptz_pan_tilt_speed(ndi_receiver_, last_pan_speed_, last_tilt_speed_);
 		} else if (iequals(event_name,"tilt_speed")) {
-			last_tilt_speed_ = event::get_value<event::EventDouble>(event);
-			NDIlib_recv_ptz_pan_tilt(ndi_receiver_, last_pan_speed_, last_tilt_speed_);
+			last_tilt_speed_ = get_event_float(event);
+			log[log::info] << "tilt_speed: [" << last_pan_speed_ << "," << last_tilt_speed_ << "]";
+			NDIlib_recv_ptz_pan_tilt_speed(ndi_receiver_, last_pan_speed_, last_tilt_speed_);
 		} else if (iequals(event_name,"auto_focus")) {
 			NDIlib_recv_ptz_auto_focus(ndi_receiver_);
 		} else if (iequals(event_name,"focus")) {
-			auto val = event::get_value<event::EventDouble>(event);
+			auto val = get_event_float(event);
 			NDIlib_recv_ptz_focus(ndi_receiver_, val);
 		} else if (iequals(event_name,"focus_speed")) {
-			auto val = event::get_value<event::EventDouble>(event);
+			auto val = get_event_float(event);
 			NDIlib_recv_ptz_focus_speed(ndi_receiver_, val);
 		} else if (iequals(event_name,"white_balance_auto")) {
 			NDIlib_recv_ptz_white_balance_auto(ndi_receiver_);
@@ -371,7 +384,7 @@ bool NDIInput::do_process_event(const std::string& event_name, const event::pBas
 		} else if (iequals(event_name,"exposure_auto")) {
 			NDIlib_recv_ptz_exposure_auto(ndi_receiver_);
 		} else if (iequals(event_name,"exposure_manual")) {
-			auto val = event::get_value<event::EventDouble>(event);
+			auto val = get_event_float(event);
 			NDIlib_recv_ptz_exposure_manual(ndi_receiver_, val);
 		} else {
 			log[log::info] << "Got unknown event \"" << event_name << "\", timestamp: " << event->get_timestamp();
