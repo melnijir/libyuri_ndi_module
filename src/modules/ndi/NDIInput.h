@@ -40,6 +40,7 @@ private:
 	std::string format_;
 	int nodata_timout_;
 	bool audio_enabled_;
+	bool lowres_enabled_;
 	position_t audio_pipe_;
 
 	duration_t interval_;

@@ -59,6 +59,7 @@ core::Parameters NDIInput::configure() {
 	p["backup"]["Name of the backup stream to read."]="";
 	p["format"]["Which format to prefer [fastest/rgb/yuv]."]="fastest";
 	p["audio"]["Set to true if audio should be received."]=false;
+	p["lowres"]["Set to true if video should be received in low resolution."]=false;
 	p["licence"]["Sets licence file location"]="";
 	return p;
 }
@@ -66,7 +67,7 @@ core::Parameters NDIInput::configure() {
 NDIInput::NDIInput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,0,1,std::string("NDIInput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),audio_pipe_(-1),
+stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),lowres_enabled_(false),audio_pipe_(-1),
 interval_(3_s),licence_(""),licence_display_(false),licence_required_(false),ptz_supported_(false),
 last_pan_val_(0),last_tilt_val_(0),last_pan_speed_(0),last_tilt_speed_(0) {
 	IOTHREAD_INIT(parameters)
@@ -169,7 +170,11 @@ void NDIInput::run() {
 		} else {
 			receiver_desc.color_format = NDIlib_recv_color_format_fastest;
 		}
-		receiver_desc.bandwidth = NDIlib_recv_bandwidth_highest;
+		if (lowres_enabled_) {
+			receiver_desc.bandwidth = NDIlib_recv_bandwidth_lowest;
+		} else {
+			receiver_desc.bandwidth = NDIlib_recv_bandwidth_highest;
+		}
 
 
 		ndi_receiver_ = NDIlib_recv_create_v3(&receiver_desc);
@@ -399,6 +404,7 @@ bool NDIInput::set_param(const core::Parameter &param) {
 			(backup_, "backup")
 			(format_, "format")
 			(audio_enabled_, "audio")
+			(lowres_enabled_, "lowres")
 			(licence_, "licence")
 			)
 		return true;
