@@ -6,13 +6,13 @@
 #define NDIOUTPUT_H_
 
 #include "yuri/core/thread/IOThread.h"
-#include "yuri/event/BasicEventConsumer.h"
 #include "yuri/core/thread/InputThread.h"
 #include "yuri/event/BasicEventConsumer.h"
 #include "yuri/event/BasicEventProducer.h"
+#include "yuri/core/frame/RawVideoFrame.h"
+#include "yuri/core/frame/RawAudioFrame.h"
 
 #include "Licence.h"
-
 #include <Processing.NDI.Lib.h>
 
 namespace yuri {
@@ -26,6 +26,7 @@ public:
 	virtual void run() override;
 	IOTHREAD_GENERATOR_DECLARATION
 	static core::Parameters configure();
+	void sound_sender();
 private:
 	bool step();
 	virtual bool set_param(const core::Parameter &param) override;
@@ -41,12 +42,15 @@ private:
 
 	NDIlib_send_instance_t pNDI_send_;
 
-	duration_t interval_;
-	duration_t last_point_;
+	duration_t max_time_;
 	Timer timer_;
 
 	Licence* lic_;
+	LicenceCaps caps_;
 	std::string licence_;
+
+	core::pRawAudioFrame aframe_to_send_;
+	core::pRawVideoFrame vframe_to_send_;
 };
 
 }
