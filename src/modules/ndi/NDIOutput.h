@@ -37,6 +37,7 @@ private:
 
 	std::string stream_;
 	bool audio_enabled_;
+	float fps_;
 
 	NDIlib_send_instance_t pNDI_send_;
 

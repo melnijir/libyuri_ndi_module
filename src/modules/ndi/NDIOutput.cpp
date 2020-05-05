@@ -28,6 +28,7 @@ core::Parameters NDIOutput::configure() {
 	p["stream"]["Name of the stream to send."]="LiNDI";
 	p["audio"]["Set to true if audio should be send."]=false;
 	p["licence"]["Sets licence file location"]="";
+	p["fps"]["Sets fps indicator sent in the stream"]="";
 	return p;
 }
 
@@ -71,8 +72,14 @@ bool NDIOutput::step() {
 	NDI_video_frame.yres = frame->get_height();
 	NDI_video_frame.FourCC = yuri_format_to_ndi(frame->get_format());
 	NDI_video_frame.line_stride_in_bytes = 0; // autodetect
-	NDI_video_frame.frame_rate_N = 60000;
-	NDI_video_frame.frame_rate_D = 1000;
+	if (fps_ == std::ceil(fps_)) {
+		NDI_video_frame.frame_rate_N = 1000*fps_;
+		NDI_video_frame.frame_rate_D = 1000;
+	} else {
+		int fps = std::ceil(fps_);
+		NDI_video_frame.frame_rate_N = 1000*fps;
+		NDI_video_frame.frame_rate_D = 1001;
+	}
 	NDI_video_frame.p_data = PLANE_RAW_DATA(frame,0);
 	NDIlib_send_send_video_v2(pNDI_send_, &NDI_video_frame);
 	return true;
@@ -101,6 +108,7 @@ bool NDIOutput::set_param(const core::Parameter &param) {
 			(stream_, "stream")
 			(audio_enabled_, "audio")
 			(licence_, "licence")
+			(fps_, "fps")
 			)
 		return true;
 	return IOThread::set_param(param);
