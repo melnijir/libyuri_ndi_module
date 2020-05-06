@@ -34,9 +34,11 @@ void draw_licence_rgba(core::pRawVideoFrame& frame, float percents) {
 	for (dimension_t line = 0; line < (res.height / 10); ++line) {
 		for (dimension_t col = 0; col < res.width; ++col) {
 			if ((float)col/res.width <= percents) {
-				*iter++ = *iter^t_max;
-				*iter++ = *iter^t_max;
-				*iter++ = *iter^t_max;
+				*iter = *iter^t_max;
+				iter++;
+				*iter = *iter^t_max;
+				iter++;
+				*iter = *iter^t_max;
 				iter++;
 			} else {
 				iter+=4;
