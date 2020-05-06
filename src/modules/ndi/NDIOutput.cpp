@@ -106,7 +106,7 @@ void NDIOutput::run() {
 void NDIOutput::sound_sender() {
 	while (running() && audio_enabled_) {
 		aframe_to_send_ = std::dynamic_pointer_cast<core::RawAudioFrame>(pop_frame(1));
-		if (aframe_to_send_) {
+		if (streaming_enabled_ && aframe_to_send_) {
 			NDIlib_audio_frame_v3_t NDI_audio_frame;
 			NDI_audio_frame.no_channels = aframe_to_send_->get_channel_count();
 			NDI_audio_frame.no_samples = aframe_to_send_->get_sample_count();
@@ -125,12 +125,11 @@ void NDIOutput::sound_sender() {
 
 bool NDIOutput::step() {
 	if (!NDIlib_send_get_no_connections(pNDI_send_, 10000)) {
-		// Empty pipes (no samples should wait)
-		if (audio_enabled_) {
-			auto frame = std::dynamic_pointer_cast<core::RawAudioFrame>(pop_frame(1));
-		}
-		auto frame = std::dynamic_pointer_cast<core::RawVideoFrame>(pop_frame(0));
+		vframe_to_send_ = std::dynamic_pointer_cast<core::RawVideoFrame>(pop_frame(0));
+		streaming_enabled_ = false;
 		return true;
+	} else {
+		streaming_enabled_ = true;
 	}
 	vframe_to_send_ = std::dynamic_pointer_cast<core::RawVideoFrame>(pop_frame(0));
 	if (!vframe_to_send_)
