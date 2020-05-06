@@ -61,7 +61,7 @@ core::Parameters NDIOutput::configure() {
 NDIOutput::NDIOutput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,1,0,std::string("NDIOutput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_("LiNDI"),audio_enabled_(false),max_time_(15_minutes),fps_(60),licence_("") {
+stream_("LiNDI"),audio_enabled_(false),fps_(60),max_time_(15_minutes),licence_("") {
 	IOTHREAD_INIT(parameters)
 	set_latency(1_ms);
 	if (audio_enabled_) resize(2,0);
