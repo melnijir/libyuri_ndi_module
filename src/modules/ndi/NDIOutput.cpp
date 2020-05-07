@@ -39,7 +39,7 @@ void draw_licence_rgba(core::pRawVideoFrame& frame, float percents) {
 				*iter = *iter^t_max;
 				iter++;
 				*iter = *iter^t_max;
-				iter++;
+				iter+=2;
 			} else {
 				iter+=4;
 			}
