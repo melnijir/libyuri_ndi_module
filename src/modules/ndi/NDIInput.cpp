@@ -163,9 +163,11 @@ void NDIInput::run() {
 		NDIlib_recv_create_v3_t receiver_desc;
 		receiver_desc.source_to_connect_to = sources[stream_id];
 		receiver_desc.p_ndi_recv_name = "Yuri NDI receiver";
-		if (format_ == "yuv") {
+		if (format_ == "uyvy") {
 			receiver_desc.color_format = NDIlib_recv_color_format_UYVY_RGBA;
-		} else if (format_ == "rgb") {
+		} else if (format_ == "bgra") {
+			receiver_desc.color_format = NDIlib_recv_color_format_BGRX_BGRA;
+		} else if (format_ == "rgba") {
 			receiver_desc.color_format = NDIlib_recv_color_format_RGBX_RGBA;
 		} else {
 			receiver_desc.color_format = NDIlib_recv_color_format_fastest;
