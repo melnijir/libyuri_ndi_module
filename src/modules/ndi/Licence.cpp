@@ -150,10 +150,13 @@ std::string Licence::get_mac_addr(std::string ifname) {
 			for (int i = 0; i < 6; i++)
 				sstream << std::setfill('0') << std::setw(2) << std::hex << (uint)saddr->sll_addr[i] << (i < 5 ? ":" : "");
 			if (!strcmp(ifname.c_str(), if_addr->ifa_name)) {
+                freeifaddrs(if_addr_list_);
 				return sstream.str();
 			}
 		}
     }
+    freeifaddrs(if_addr_list_);
+
     return "";
 }
 
