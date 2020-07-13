@@ -41,8 +41,8 @@ namespace ndi {
 
 typedef unsigned char byte;
 
-const size_t limited_outputs = 1;
-const size_t limited_streams = 1;
+const size_t limited_outputs = 2;
+const size_t limited_streams = 4;
 const size_t limited_resolution = 1080;
 
 struct LicenceCaps {
@@ -50,6 +50,7 @@ struct LicenceCaps {
     std::string name;
     std::string date;
     size_t streams;
+    size_t streams_given;
     size_t outputs;
     size_t resolution;
     std::string level;

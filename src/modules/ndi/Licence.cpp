@@ -115,22 +115,20 @@ void Licence::set_licence_file(const std::string path) {
 }
 
 LicenceCaps Licence::get_licence() {
-    if (++given_ <= licence_data_.caps.streams) {
-        // Check interface
-        if (licence_data_.ifname != "any" && licence_data_.mac_address != get_mac_addr(licence_data_.ifname))
-            throw std::out_of_range("Licence is not valid!");
-        // Check date
-        std::tm licence_date = {};
-        std::istringstream time_s(licence_data_.caps.date);
-        time_s >> std::get_time(&licence_date,"%Y-%m-%d");
-        auto tpl = std::chrono::system_clock::from_time_t(std::mktime(&licence_date));
-        auto tpn = std::chrono::system_clock::now();
-        if (licence_data_.caps.date != "0000-00-00" && (tpl < tpn))
-            throw std::out_of_range("Licence is not valid!");
-        return licence_data_.caps;
-    } else {
-        throw std::out_of_range("No more licences availible. Turn off some streams.");
-    }
+    given_++;
+    // Check interface
+    if (licence_data_.ifname != "any" && licence_data_.mac_address != get_mac_addr(licence_data_.ifname))
+        throw std::out_of_range("Licence is not valid!");
+    // Check date
+    std::tm licence_date = {};
+    std::istringstream time_s(licence_data_.caps.date);
+    time_s >> std::get_time(&licence_date,"%Y-%m-%d");
+    auto tpl = std::chrono::system_clock::from_time_t(std::mktime(&licence_date));
+    auto tpn = std::chrono::system_clock::now();
+    if (licence_data_.caps.date != "0000-00-00" && (tpl < tpn))
+        throw std::out_of_range("Licence is not valid!");
+    licence_data_.caps.streams_given = given_;
+    return licence_data_.caps;
 }
 
 void Licence::return_licence() {
