@@ -26,26 +26,26 @@ namespace ndi {
 
 namespace {
 
-void draw_licence_rgba(core::pRawVideoFrame& frame, float percents) {
-	auto& plane = PLANE_DATA(frame,0);
-	const auto res = plane.get_resolution();
-	auto iter = plane.begin();
-	uint8_t t_max = std::numeric_limits<uint8_t>::max();
-	for (dimension_t line = 0; line < (res.height / 10); ++line) {
-		for (dimension_t col = 0; col < res.width; ++col) {
-			if ((float)col/res.width <= percents) {
-				*iter = *iter^t_max;
-				iter++;
-				*iter = *iter^t_max;
-				iter++;
-				*iter = *iter^t_max;
-				iter+=2;
-			} else {
-				iter+=4;
-			}
-		}
-	}
-}
+// void draw_licence_rgba(core::pRawVideoFrame& frame, float percents) {
+// 	auto& plane = PLANE_DATA(frame,0);
+// 	const auto res = plane.get_resolution();
+// 	auto iter = plane.begin();
+// 	uint8_t t_max = std::numeric_limits<uint8_t>::max();
+// 	for (dimension_t line = 0; line < (res.height / 10); ++line) {
+// 		for (dimension_t col = 0; col < res.width; ++col) {
+// 			if ((float)col/res.width <= percents) {
+// 				*iter = *iter^t_max;
+// 				iter++;
+// 				*iter = *iter^t_max;
+// 				iter++;
+// 				*iter = *iter^t_max;
+// 				iter+=2;
+// 			} else {
+// 				iter+=4;
+// 			}
+// 		}
+// 	}
+// }
 
 }
 
@@ -63,7 +63,7 @@ core::Parameters NDIOutput::configure() {
 NDIOutput::NDIOutput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,1,0,std::string("NDIOutput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_("LiNDI"),audio_enabled_(false),fps_(60),max_time_(15_minutes),licence_("") {
+stream_("LiNDI"),audio_enabled_(false),fps_(60),max_time_(30_minutes),licence_("") {
 	IOTHREAD_INIT(parameters)
 	set_latency(1_ms);
 	if (audio_enabled_) resize(2,0);
@@ -98,7 +98,7 @@ void NDIOutput::run() {
 								 "             model_name=\"RaspiBase\" "
 								 "             serial=\"AAAAAA\"/>";
 	NDIlib_send_add_connection_metadata(pNDI_send_, &NDI_connection_type);
-	timer_.reset();
+	licence_timer_.reset();
 	std::thread th(&NDIOutput::sound_sender, this);
 	IOThread::run();
 	stop_stream();
@@ -149,12 +149,9 @@ bool NDIOutput::step() {
 		NDI_video_frame.frame_rate_N = 1000*fps;
 		NDI_video_frame.frame_rate_D = 1001;
 	}
-	if (caps_.level == "unlicensed") {
-		if (timer_.get_duration() > max_time_) {
-			request_end(core::yuri_exit_interrupted);
-			return true;
-		}
-		draw_licence_rgba(vframe_to_send_, (float)timer_.get_duration().value/max_time_.value);
+	if (caps_.level == "unlicensed" && licence_timer_.get_duration() > max_time_) {
+		request_end(core::yuri_exit_interrupted);
+		return true;
 	}
 	NDIlib_tally_t NDI_tally;
 	NDIlib_send_get_tally(pNDI_send_, &NDI_tally, 0);

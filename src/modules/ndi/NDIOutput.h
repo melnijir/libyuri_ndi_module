@@ -44,7 +44,7 @@ private:
 	NDIlib_send_instance_t pNDI_send_;
 
 	duration_t max_time_;
-	Timer timer_;
+	Timer licence_timer_;
 
 	Licence* lic_;
 	LicenceCaps caps_;
