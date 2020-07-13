@@ -43,15 +43,12 @@ private:
 	bool lowres_enabled_;
 	position_t audio_pipe_;
 
-	duration_t interval_;
-	duration_t last_point_;
-	Timer timer_;
-
 	Licence* lic_;
 	LicenceCaps caps_;
 	std::string licence_;
-	bool licence_display_;
 	bool licence_required_;
+	duration_t max_time_;
+	Timer licence_timer_;
 
 	NDIlib_recv_instance_t ndi_receiver_;
 	NDIlib_find_instance_t ndi_finder_;
