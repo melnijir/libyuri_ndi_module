@@ -64,14 +64,18 @@ void NDIOutput::run() {
 	pNDI_send_ = NDIlib_send_create(&NDI_send_create_desc);
 	if (!pNDI_send_)
 		throw exception::InitializationFailed("Failed to initialize NDI sender.");
-	NDIlib_metadata_frame_t NDI_connection_type;
-	NDI_connection_type.p_data = "<ndi_product long_name=\"Dicaffeine streamer.\" "
-								 "             short_name=\"Dicaffeine\" "
-								 "             manufacturer=\"Jiri Melnikov\" "
-								 "             version=\"1.000.000\" "
-								 "             session=\"default\" "
-								 "             model_name=\"RaspiBase\" "
-								 "             serial=\"AAAAAA\"/>";
+
+    static const char* p_connection_str =	"<ndi_product long_name=\"NDI Yuri module\" "
+											"             short_name=\"NDI module\" "
+											"             manufacturer=\"Unknown.\" "
+											"             version=\"1.000.000\" "
+											"             session=\"default\" "
+											"             model_name=\"YM\" "
+											"             serial=\"ABCDEFG\"/>";
+    NDIlib_metadata_frame_t NDI_connection_type;
+    NDI_connection_type.length          = (int)::strlen(p_connection_str);
+    NDI_connection_type.timecode        = NDIlib_send_timecode_synthesize;
+    NDI_connection_type.p_data          = (char*)p_connection_str;
 	NDIlib_send_add_connection_metadata(pNDI_send_, &NDI_connection_type);
 	licence_timer_.reset();
 	std::thread th(&NDIOutput::sound_sender, this);
