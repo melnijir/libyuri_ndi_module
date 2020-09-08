@@ -20,6 +20,7 @@
 #include <cassert>
 #include <cmath>
 #include <vector>
+#include <cstring>
 
 namespace yuri {
 namespace ndi {
