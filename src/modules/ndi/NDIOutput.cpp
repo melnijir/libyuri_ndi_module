@@ -24,31 +24,6 @@
 namespace yuri {
 namespace ndi {
 
-namespace {
-
-// void draw_licence_rgba(core::pRawVideoFrame& frame, float percents) {
-// 	auto& plane = PLANE_DATA(frame,0);
-// 	const auto res = plane.get_resolution();
-// 	auto iter = plane.begin();
-// 	uint8_t t_max = std::numeric_limits<uint8_t>::max();
-// 	for (dimension_t line = 0; line < (res.height / 10); ++line) {
-// 		for (dimension_t col = 0; col < res.width; ++col) {
-// 			if ((float)col/res.width <= percents) {
-// 				*iter = *iter^t_max;
-// 				iter++;
-// 				*iter = *iter^t_max;
-// 				iter++;
-// 				*iter = *iter^t_max;
-// 				iter+=2;
-// 			} else {
-// 				iter+=4;
-// 			}
-// 		}
-// 	}
-// }
-
-}
-
 IOTHREAD_GENERATOR(NDIOutput)
 
 core::Parameters NDIOutput::configure() {
