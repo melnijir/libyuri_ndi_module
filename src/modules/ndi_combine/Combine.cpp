@@ -19,10 +19,9 @@ namespace ndi_combine {
 IOTHREAD_GENERATOR(Combine)
 
 MODULE_REGISTRATION_BEGIN("ndi_combine")
-		REGISTER_IOTHREAD("ndi_combine",Combine)
+	REGISTER_IOTHREAD("ndi_combine",Combine)
 MODULE_REGISTRATION_END()
 
-// So we can write log[info] instead of log[log::info]
 using namespace yuri::log;
 
 core::Parameters Combine::configure()
@@ -32,7 +31,6 @@ core::Parameters Combine::configure()
 	p["x"]["Width of the grid"]=2;
 	p["y"]["Height of the grid"]=2;
 	p["fps"]["Maximal framerate"]=30;
-//	p->set_max_pipes(-1,1);
 	return p;
 }
 

@@ -20,7 +20,7 @@ namespace scale {
 IOTHREAD_GENERATOR(Scale)
 
 MODULE_REGISTRATION_BEGIN("ndi_scale")
-REGISTER_IOTHREAD("ndi_scale", Scale)
+    REGISTER_IOTHREAD("ndi_scale", Scale)
 MODULE_REGISTRATION_END()
 
 core::Parameters Scale::configure()

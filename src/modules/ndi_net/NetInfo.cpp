@@ -19,7 +19,7 @@ using s_event_pair = std::pair<std::string, yuri::event::pBasicEvent>;
 IOTHREAD_GENERATOR(NetInfo)
 
 MODULE_REGISTRATION_BEGIN("ndi_net_info")
-		REGISTER_IOTHREAD("ndi_net_info",NetInfo)
+	REGISTER_IOTHREAD("ndi_net_info",NetInfo)
 MODULE_REGISTRATION_END()
 
 core::Parameters NetInfo::configure()
@@ -28,7 +28,6 @@ core::Parameters NetInfo::configure()
 	p.set_description("NetInfo");
 	p["interval"]["Interval to send notifications (in seconds)"]=1.0;
 	p["interface"]["Which interface should be checked (:all for all devices in system)"]=":all";
-//	p->set_max_pipes(0,0);
 	return p;
 }
 
@@ -64,8 +63,7 @@ namespace {
 	}
 }
 
-void NetInfo::run()
-{
+void NetInfo::run() {
 	timer_.reset();
 	while (still_running()) {
 		wait_for_events(get_latency());
@@ -78,8 +76,7 @@ void NetInfo::run()
 	}
 }
 
-void NetInfo::emit_events()
-{
+void NetInfo::emit_events() {
     getifaddrs(&if_addr_list_);
 
 	std::map<std::string, s_event_map> events;
@@ -122,8 +119,7 @@ void NetInfo::emit_events()
 	}
 }
 
-bool NetInfo::set_param(const core::Parameter& param)
-{
+bool NetInfo::set_param(const core::Parameter& param) {
 	if (assign_parameters(param)
 			(interval_, "interval", [](const core::Parameter& p){ return 1_s * p.get<double>();})
 			(interface_, "interface"))
@@ -131,8 +127,7 @@ bool NetInfo::set_param(const core::Parameter& param)
 	return core::IOThread::set_param(param);
 }
 
-bool NetInfo::do_process_event(const std::string& event_name, const event::pBasicEvent& event)
-{
+bool NetInfo::do_process_event(const std::string& event_name, const event::pBasicEvent& event) {
 	return true;
 }
 
