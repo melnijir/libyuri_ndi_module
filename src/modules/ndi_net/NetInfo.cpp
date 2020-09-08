@@ -128,6 +128,8 @@ bool NetInfo::set_param(const core::Parameter& param) {
 }
 
 bool NetInfo::do_process_event(const std::string& event_name, const event::pBasicEvent& event) {
+	(void)event_name;	// Suppress compiler warning
+	(void)event;		// Suppress compiler warning
 	return true;
 }
 
