@@ -76,7 +76,7 @@ void NDIOutput::run() {
     NDIlib_metadata_frame_t NDI_connection_type;
     NDI_connection_type.length          = (int)::strlen(p_connection_str);
     NDI_connection_type.timecode        = NDIlib_send_timecode_synthesize;
-    NDI_connection_type.p_data          = (char*)p_connection_str;
+    NDI_connection_type.p_data          = (char*)p_connection_str;	// should be const in header file
 	NDIlib_send_add_connection_metadata(pNDI_send_, &NDI_connection_type);
 	licence_timer_.reset();
 	std::thread th(&NDIOutput::sound_sender, this);
