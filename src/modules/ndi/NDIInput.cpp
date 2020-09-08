@@ -42,9 +42,9 @@ void draw_licence(T2* frame, size_t lines, size_t line_size) {
 float get_event_float(const event::pBasicEvent& event) {
 	switch(event->get_type()) {
 	case event::event_type_t::integer_event:
-		return (float)event::get_value<event::EventInt>(event);
+		return static_cast<float>(event::get_value<event::EventInt>(event));
 	case event::event_type_t::double_event:
-		return (float)event::get_value<event::EventDouble>(event);
+		return static_cast<float>(event::get_value<event::EventDouble>(event));
 	default:
 		return 0;
 	}
