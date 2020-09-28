@@ -89,14 +89,12 @@ void NDIOutput::sound_sender() {
 	while (running() && audio_enabled_) {
 		aframe_to_send_ = std::dynamic_pointer_cast<core::RawAudioFrame>(pop_frame(1));
 		if (streaming_enabled_ && aframe_to_send_) {
-			NDIlib_audio_frame_v3_t NDI_audio_frame;
+			NDIlib_audio_frame_interleaved_16s_t NDI_audio_frame;
 			NDI_audio_frame.no_channels = aframe_to_send_->get_channel_count();
 			NDI_audio_frame.no_samples = aframe_to_send_->get_sample_count();
 			NDI_audio_frame.sample_rate = aframe_to_send_->get_sampling_frequency();
-			NDI_audio_frame.FourCC = NDIlib_FourCC_audio_type_FLTP;
-			NDI_audio_frame.channel_stride_in_bytes = 4;
-			NDI_audio_frame.p_data = aframe_to_send_->data();
-			NDIlib_send_send_audio_v3(pNDI_send_, &NDI_audio_frame);
+			NDI_audio_frame.p_data = (short*)aframe_to_send_->data();
+			NDIlib_util_send_send_audio_interleaved_16s(pNDI_send_, &NDI_audio_frame);
 			aframe_to_send_ = nullptr;
 		} else {
 			ThreadBase::sleep(1_ms);
