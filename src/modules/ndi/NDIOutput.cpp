@@ -100,7 +100,6 @@ void NDIOutput::sound_sender() {
 			ThreadBase::sleep(1_ms);
 		}
 	}
-	
 }
 
 bool NDIOutput::step() {
