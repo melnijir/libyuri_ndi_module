@@ -49,6 +49,9 @@ private:
 	bool licence_required_;
 	duration_t max_time_;
 	Timer licence_timer_;
+	duration_t event_time_;
+	Timer event_timer_;
+
 
 	NDIlib_recv_instance_t ndi_receiver_;
 	NDIlib_find_instance_t ndi_finder_;

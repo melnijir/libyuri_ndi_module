@@ -46,6 +46,7 @@ core::Parameters NDIInput::configure() {
 	p["format"]["Which format to prefer [fastest/rgb/yuv]."]="fastest";
 	p["audio"]["Set to true if audio should be received."]=false;
 	p["lowres"]["Set to true if video should be received in low resolution."]=false;
+	p["event_time"]["How often will be events fired."]=1.0;
 	p["licence"]["Sets licence file location"]="";
 	return p;
 }
@@ -54,7 +55,7 @@ NDIInput::NDIInput(log::Log &log_,core::pwThreadBase parent, const core::Paramet
 :core::IOThread(log_,parent,0,1,std::string("NDIInput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
 stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),lowres_enabled_(false),audio_pipe_(-1),
-licence_(""),licence_required_(false),max_time_(30_minutes),ptz_supported_(false),
+licence_(""),licence_required_(false),max_time_(30_minutes),event_time_(1_s),ptz_supported_(false),
 last_pan_val_(0),last_tilt_val_(0),last_pan_speed_(0),last_tilt_speed_(0) {
 	IOTHREAD_INIT(parameters)
 	// Check licence
@@ -132,8 +133,9 @@ void NDIInput::run() {
 	if (!ndi_finder_)
 		throw exception::InitializationFailed("Failed to initialize NDI finder.");
 
-	// Start timer (needed if licence is required)
+	// Start timers (licence and events)
 	licence_timer_.reset();
+	event_timer_.reset();
 
 	while (still_running()) {
 		// Search for the source on the network
@@ -267,7 +269,10 @@ void NDIInput::run() {
 				stream_fail = 0;
 				break;
 			}
-			emit_events();
+			if (event_timer_.get_duration() > event_time_) {
+				emit_events();
+				event_timer_.reset();
+			}
 			process_events();
 		}
 
@@ -282,7 +287,13 @@ void NDIInput::run() {
 }
 
 void NDIInput::emit_events() {
-	// Nothing here now
+	// Performace info (dropped and received frames)
+	NDIlib_recv_performance_t perf_total, perf_dropped;
+	NDIlib_recv_get_performance(ndi_receiver_, &perf_total, &perf_dropped);
+	emit_event("audio_received", perf_total.audio_frames);
+	emit_event("audio_dropped", perf_dropped.audio_frames);
+	emit_event("video_received", perf_total.video_frames);
+	emit_event("video_dropped", perf_dropped.video_frames);
 }
 
 bool NDIInput::do_process_event(const std::string& event_name, const event::pBasicEvent& event) {
