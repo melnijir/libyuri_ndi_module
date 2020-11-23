@@ -25,20 +25,6 @@ using namespace std::chrono;
 
 
 namespace {
-template<typename T>
-void draw_line(T*start, T*end, T*out_end) {
-	T t_max = std::numeric_limits<T>::max();
-	std::transform(start,end,out_end,[t_max](const T& v){return v^t_max;});
-}
-template<typename T, class T2>
-void draw_licence(T2* frame, size_t lines, size_t line_size) {
-	T* s= reinterpret_cast<T*>(frame);
-	const size_t size = line_size *sizeof(T2) / sizeof(T);
-	for (size_t line = 0; line < lines; ++line) {
-		draw_line(s, s + size, s);
-		s += size;
-	}
-}
 float get_event_float(const event::pBasicEvent& event) {
 	switch(event->get_type()) {
 	case event::event_type_t::integer_event:
