@@ -1,0 +1,45 @@
+<?xml version="1.0" ?>
+<app name="ndi_glx"
+	xmlns="urn:library:yuri:xmlschema:2001"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<description>Test application displaying output of NDI input</description>
+	
+	<variable name="resolution" description="Display resolution.">1280x720</variable>
+	<variable name="stream" description="Stream name" required="1"></variable>
+	
+	
+	<!-- General settings -->
+	<general>
+		<!-- Unlimited run time -->
+		<parameter name="run_limit">-1</parameter>
+		<!-- Moderate debug informations -->
+		<parameter name="debug">0</parameter>
+	</general>
+	
+	<!-- Units -->
+	<!-- Video4Linux2 device source -->
+	<node class="ndi_input" name="ndi">
+		<parameter name="stream">@stream</parameter>
+	</node>
+
+	<node class="scale" name="scaler">
+		<parameter name="resolution">@resolution</parameter>
+	</node>
+	
+	<!-- And finally simple rendering window -->
+	<node class="glx_window" name="out">
+		<parameter name="resolution">@resolution</parameter>
+	</node>
+
+	<!-- Event info module to display stats -->
+	<node class="event_info" name="einfo" />
+	
+	<!-- Link specifications -->
+	<link name="src_image" class="single" source="ndi:0" target="scaler:0"/>
+	<link name="scaled_image" class="single" source="scaler:0" target="out:0"/>
+
+	<event>
+        route(ndi:*)->einfo:*;
+    </event>
+	
+</app>
