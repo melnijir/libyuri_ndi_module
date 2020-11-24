@@ -138,6 +138,9 @@ void NDIInput::run() {
 	event_timer_.reset();
 
 	while (still_running()) {
+		// Keep and update stream status
+		bool stream_running = false;
+		emit_event("stream_off");
 		// Search for the source on the network
 		int stream_id = -1;
 		const NDIlib_source_t* sources = nullptr;
@@ -213,6 +216,8 @@ void NDIInput::run() {
 			case NDIlib_frame_type_video:
 				log[log::debug] << "Video data received: " << n_video_frame.xres << "x" << n_video_frame.yres;
 				stream_fail = 0;
+				if (!stream_running) emit_event("stream_on");
+				stream_running = true;
 				y_video_format = ndi_format_to_yuri(n_video_frame.FourCC);
 				y_video_frame = core::RawVideoFrame::create_empty(y_video_format, {(uint32_t)n_video_frame.xres, (uint32_t)n_video_frame.yres}, true);
 				std::copy(n_video_frame.p_data, n_video_frame.p_data + n_video_frame.yres * n_video_frame.line_stride_in_bytes, PLANE_DATA(y_video_frame, 0).begin());
