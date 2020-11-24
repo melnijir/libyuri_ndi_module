@@ -29,7 +29,7 @@ IOTHREAD_GENERATOR(NDIOutput)
 
 core::Parameters NDIOutput::configure() {
 	core::Parameters p = IOThread::configure();
-	p["stream"]["Name of the stream to send."]="LiNDI";
+	p["stream"]["Name of the stream to send."]="Dicaffeine";
 	p["audio"]["Set to true if audio should be send."]=false;
 	p["licence"]["Sets licence file location"]="";
 	p["fps"]["Sets fps indicator sent in the stream"]="";
@@ -39,7 +39,7 @@ core::Parameters NDIOutput::configure() {
 NDIOutput::NDIOutput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,1,0,std::string("NDIOutput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_("LiNDI"),audio_enabled_(false),fps_(60),max_time_(30_minutes),licence_("") {
+stream_("Dicaffeine"),audio_enabled_(false),fps_(60),max_time_(30_minutes),licence_("") {
 	IOTHREAD_INIT(parameters)
 	set_latency(1_ms);
 	if (audio_enabled_) resize(2,0);
