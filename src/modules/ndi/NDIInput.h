@@ -27,6 +27,7 @@ public:
 	IOTHREAD_GENERATOR_DECLARATION
 	static core::Parameters configure();
 	static std::vector<core::InputDeviceInfo> enumerate();
+	void sound_receiver();
 private:
 	const NDIlib_source_t* get_source(std::string name, int *position);
 

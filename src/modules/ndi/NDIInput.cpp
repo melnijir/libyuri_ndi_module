@@ -126,6 +126,31 @@ const NDIlib_source_t* NDIInput::get_source(std::string name, int *position) {
 	return sources;
 }
 
+void NDIInput::sound_receiver() {
+	// Yuri Audio
+	core::pRawAudioFrame y_audio_frame;
+	while (running() && audio_enabled_) {
+		NDIlib_audio_frame_v2_t n_audio_frame;
+		NDIlib_audio_frame_interleaved_16s_t n_audio_frame_16bpp_interleaved;
+		switch (NDIlib_recv_capture_v2(ndi_receiver_, nullptr, &n_audio_frame, nullptr, 1000)) {
+			// Audio data
+			case NDIlib_frame_type_audio:
+				log[log::debug] << "Audio data received: " << n_audio_frame.no_samples << " samples, " << n_audio_frame.no_channels << " channels.";
+				n_audio_frame_16bpp_interleaved.reference_level = 20;	// 20dB of headroom
+				n_audio_frame_16bpp_interleaved.p_data = new short[n_audio_frame.no_samples*n_audio_frame.no_channels];
+				// Convert it
+				NDIlib_util_audio_to_interleaved_16s_v2(&n_audio_frame, &n_audio_frame_16bpp_interleaved);
+				// Process data!
+				y_audio_frame = core::RawAudioFrame::create_empty(core::raw_audio_format::signed_16bit, n_audio_frame.no_channels, n_audio_frame.sample_rate, n_audio_frame_16bpp_interleaved.p_data, n_audio_frame.no_samples * n_audio_frame.no_channels);
+				push_frame(audio_pipe_, y_audio_frame);
+				// Free the interleaved audio data
+				delete[] n_audio_frame_16bpp_interleaved.p_data;
+				NDIlib_recv_free_audio_v2(ndi_receiver_, &n_audio_frame);
+				break;
+		}
+	}
+}
+
 void NDIInput::run() {
 	// Basic finder
 	const NDIlib_find_create_t finder_desc;
@@ -136,6 +161,9 @@ void NDIInput::run() {
 	// Start timers (licence and events)
 	licence_timer_.reset();
 	event_timer_.reset();
+
+	// Start audio receiver
+	std::thread th(&NDIInput::sound_receiver, this);
 
 	while (still_running()) {
 		// Keep and update stream status
@@ -196,18 +224,14 @@ void NDIInput::run() {
 		log[log::info] << "Receiving started";
 		while (still_running() && stream_fail++ < 5) {
 			NDIlib_video_frame_v2_t n_video_frame;
-			NDIlib_audio_frame_v2_t n_audio_frame;
 			NDIlib_metadata_frame_t metadata_frame;
-			NDIlib_audio_frame_interleaved_16s_t n_audio_frame_16bpp_interleaved;
 			// Yuri Video
 			yuri::format_t y_video_format;
 			core::pRawVideoFrame y_video_frame;
-			// Yuri Audio
-			core::pRawAudioFrame y_audio_frame;
 			// Yuri timestamp
 			time_point<high_resolution_clock, nanoseconds> y_timestamp;
 			// Receive
-			switch (NDIlib_recv_capture_v2(ndi_receiver_, &n_video_frame, &n_audio_frame, &metadata_frame, 1000)) {
+			switch (NDIlib_recv_capture_v2(ndi_receiver_, &n_video_frame, nullptr, &metadata_frame, 1000)) {
 			// No data
 			case NDIlib_frame_type_none:
 				log[log::debug] << "No data received.";
@@ -232,23 +256,6 @@ void NDIInput::run() {
 				}
 				// Push frame out
 				push_frame(0,y_video_frame);
-				break;
-			// Audio data
-			case NDIlib_frame_type_audio:
-				log[log::debug] << "Audio data received: " << n_audio_frame.no_samples << " samples, " << n_audio_frame.no_channels << " channels.";
-				stream_fail = 0;
-				if (audio_enabled_) {
-					n_audio_frame_16bpp_interleaved.reference_level = 20;	// 20dB of headroom
-					n_audio_frame_16bpp_interleaved.p_data = new short[n_audio_frame.no_samples*n_audio_frame.no_channels];
-					// Convert it
-					NDIlib_util_audio_to_interleaved_16s_v2(&n_audio_frame, &n_audio_frame_16bpp_interleaved);
-					// Process data!
-					y_audio_frame = core::RawAudioFrame::create_empty(core::raw_audio_format::signed_16bit, n_audio_frame.no_channels, n_audio_frame.sample_rate, n_audio_frame_16bpp_interleaved.p_data, n_audio_frame.no_samples * n_audio_frame.no_channels);
-					push_frame(audio_pipe_, y_audio_frame);
-					// Free the interleaved audio data
-					delete[] n_audio_frame_16bpp_interleaved.p_data;
-				}
-				NDIlib_recv_free_audio_v2(ndi_receiver_, &n_audio_frame);
 				break;
 			// Meta data
 			case NDIlib_frame_type_metadata:
@@ -287,6 +294,9 @@ void NDIInput::run() {
 		NDIlib_recv_destroy(ndi_receiver_);
 		NDIlib_destroy();
 	}
+
+	// Connect audio thread
+	th.join();
 
 	NDIlib_find_destroy(ndi_finder_);
 }
