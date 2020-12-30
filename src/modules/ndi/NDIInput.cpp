@@ -229,6 +229,7 @@ void NDIInput::run() {
 		while (still_running() && stream_fail++ < 5) {
 			NDIlib_video_frame_v2_t n_video_frame;
 			NDIlib_metadata_frame_t metadata_frame;
+			NDIlib_recv_queue_t recv_queue;
 			// Yuri Video
 			yuri::format_t y_video_format;
 			core::pRawVideoFrame y_video_frame;
@@ -248,6 +249,13 @@ void NDIInput::run() {
 				if (!stream_running) {
 					stream_running = true;
 					emit_event("stream_on");
+				}
+				// Check queue - it too large it's time to drop frames
+				NDIlib_recv_get_queue(ndi_receiver_, &recv_queue);
+				if (recv_queue.video_frames > 3) {
+					NDIlib_recv_free_video_v2(ndi_receiver_, &n_video_frame);
+					log[log::info] << "Loosing video frames, queue: " << recv_queue.video_frames;
+					break;
 				}
 				y_video_format = ndi_format_to_yuri(n_video_frame.FourCC);
 				y_video_frame = core::RawVideoFrame::create_empty(y_video_format, {(uint32_t)n_video_frame.xres, (uint32_t)n_video_frame.yres}, true);
