@@ -133,20 +133,24 @@ void NDIInput::sound_receiver() {
 		NDIlib_audio_frame_v2_t n_audio_frame;
 		NDIlib_audio_frame_interleaved_16s_t n_audio_frame_16bpp_interleaved;
 		switch (NDIlib_recv_capture_v2(ndi_receiver_, nullptr, &n_audio_frame, nullptr, 1000)) {
-			// Audio data
-			case NDIlib_frame_type_audio:
-				log[log::debug] << "Audio data received: " << n_audio_frame.no_samples << " samples, " << n_audio_frame.no_channels << " channels.";
-				n_audio_frame_16bpp_interleaved.reference_level = 20;	// 20dB of headroom
-				n_audio_frame_16bpp_interleaved.p_data = new short[n_audio_frame.no_samples*n_audio_frame.no_channels];
-				// Convert it
-				NDIlib_util_audio_to_interleaved_16s_v2(&n_audio_frame, &n_audio_frame_16bpp_interleaved);
-				// Process data!
-				y_audio_frame = core::RawAudioFrame::create_empty(core::raw_audio_format::signed_16bit, n_audio_frame.no_channels, n_audio_frame.sample_rate, n_audio_frame_16bpp_interleaved.p_data, n_audio_frame.no_samples * n_audio_frame.no_channels);
-				push_frame(audio_pipe_, y_audio_frame);
-				// Free the interleaved audio data
-				delete[] n_audio_frame_16bpp_interleaved.p_data;
-				NDIlib_recv_free_audio_v2(ndi_receiver_, &n_audio_frame);
-				break;
+		// Audio data
+		case NDIlib_frame_type_audio:
+			log[log::debug] << "Audio data received: " << n_audio_frame.no_samples << " samples, " << n_audio_frame.no_channels << " channels.";
+			n_audio_frame_16bpp_interleaved.reference_level = 20;	// 20dB of headroom
+			n_audio_frame_16bpp_interleaved.p_data = new short[n_audio_frame.no_samples*n_audio_frame.no_channels];
+			// Convert it
+			NDIlib_util_audio_to_interleaved_16s_v2(&n_audio_frame, &n_audio_frame_16bpp_interleaved);
+			// Process data!
+			y_audio_frame = core::RawAudioFrame::create_empty(core::raw_audio_format::signed_16bit, n_audio_frame.no_channels, n_audio_frame.sample_rate, n_audio_frame_16bpp_interleaved.p_data, n_audio_frame.no_samples * n_audio_frame.no_channels);
+			push_frame(audio_pipe_, y_audio_frame);
+			// Free the interleaved audio data
+			delete[] n_audio_frame_16bpp_interleaved.p_data;
+			NDIlib_recv_free_audio_v2(ndi_receiver_, &n_audio_frame);
+			break;
+		// Everything else
+		default:
+			log[log::debug] << "Unknown message found.";
+			break;
 		}
 	}
 }
@@ -230,6 +234,7 @@ void NDIInput::run() {
 			core::pRawVideoFrame y_video_frame;
 			// Yuri timestamp
 			time_point<high_resolution_clock, nanoseconds> y_timestamp;
+			int64_t y_timecode;
 			// Receive
 			switch (NDIlib_recv_capture_v2(ndi_receiver_, &n_video_frame, nullptr, &metadata_frame, 1000)) {
 			// No data
@@ -240,16 +245,20 @@ void NDIInput::run() {
 			case NDIlib_frame_type_video:
 				log[log::debug] << "Video data received: " << n_video_frame.xres << "x" << n_video_frame.yres;
 				stream_fail = 0;
-				if (!stream_running) emit_event("stream_on");
-				stream_running = true;
+				if (!stream_running) {
+					stream_running = true;
+					emit_event("stream_on");
+				}
 				y_video_format = ndi_format_to_yuri(n_video_frame.FourCC);
 				y_video_frame = core::RawVideoFrame::create_empty(y_video_format, {(uint32_t)n_video_frame.xres, (uint32_t)n_video_frame.yres}, true);
 				std::copy(n_video_frame.p_data, n_video_frame.p_data + n_video_frame.yres * n_video_frame.line_stride_in_bytes, PLANE_DATA(y_video_frame, 0).begin());
 				y_timestamp = time_point<high_resolution_clock, nanoseconds>(nanoseconds(n_video_frame.timestamp*100));
-				y_video_frame->set_timestamp(y_timestamp);
-				emit_event("timecode", n_video_frame.timecode);
-				emit_event("timestamp", n_video_frame.timestamp);
+				y_timecode = n_video_frame.timecode;
+				// Free video frame as early as possible
 				NDIlib_recv_free_video_v2(ndi_receiver_, &n_video_frame);
+				y_video_frame->set_timestamp(y_timestamp);
+				emit_event("timecode", y_timecode);
+				emit_event("timestamp", y_timestamp);
 				// Quit if licence is required and we are out of time
 				if (licence_required_ && caps_.level == "unlicensed" && licence_timer_.get_duration() > max_time_) {
 					request_end(core::yuri_exit_interrupted);
