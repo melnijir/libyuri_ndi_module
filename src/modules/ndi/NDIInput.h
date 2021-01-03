@@ -16,8 +16,10 @@
 #include <Processing.NDI.Lib.h>
 
 namespace yuri {
-
 namespace ndi {
+
+const size_t ndi_source_max_wait_ms = 250;
+const size_t ndi_source_max_queue_frames = 3;
 
 class NDIInput:public core::IOThread, public event::BasicEventProducer, public event::BasicEventConsumer {
 public:
@@ -41,6 +43,7 @@ private:
 	std::string format_;
 	int nodata_timout_;
 	bool audio_enabled_;
+	bool audio_running_;
 	bool lowres_enabled_;
 	position_t audio_pipe_;
 

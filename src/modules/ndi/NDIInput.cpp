@@ -129,10 +129,10 @@ const NDIlib_source_t* NDIInput::get_source(std::string name, int *position) {
 void NDIInput::sound_receiver() {
 	// Yuri Audio
 	core::pRawAudioFrame y_audio_frame;
-	while (running() && audio_enabled_) {
+	while (audio_running_ && audio_enabled_) {
 		NDIlib_audio_frame_v2_t n_audio_frame;
 		NDIlib_audio_frame_interleaved_16s_t n_audio_frame_16bpp_interleaved;
-		switch (NDIlib_recv_capture_v2(ndi_receiver_, nullptr, &n_audio_frame, nullptr, 1000)) {
+		switch (NDIlib_recv_capture_v2(ndi_receiver_, nullptr, &n_audio_frame, nullptr, ndi_source_max_wait_ms)) {
 		// Audio data
 		case NDIlib_frame_type_audio:
 			log[log::debug] << "Audio data received: " << n_audio_frame.no_samples << " samples, " << n_audio_frame.no_channels << " channels.";
@@ -165,9 +165,6 @@ void NDIInput::run() {
 	// Start timers (licence and events)
 	licence_timer_.reset();
 	event_timer_.reset();
-
-	// Start audio receiver
-	std::thread th(&NDIInput::sound_receiver, this);
 
 	while (still_running()) {
 		// Keep and update stream status
@@ -226,6 +223,10 @@ void NDIInput::run() {
 		// Ready to play
 		int stream_fail = 0;
 		log[log::info] << "Receiving started";
+		// Start audio receiver
+		audio_running_ = true;
+		std::thread th(&NDIInput::sound_receiver, this);
+		// Start video receiver
 		while (still_running() && stream_fail++ < 5) {
 			NDIlib_video_frame_v2_t n_video_frame;
 			NDIlib_metadata_frame_t metadata_frame;
@@ -237,7 +238,7 @@ void NDIInput::run() {
 			time_point<high_resolution_clock, nanoseconds> y_timestamp;
 			int64_t y_timecode;
 			// Receive
-			switch (NDIlib_recv_capture_v2(ndi_receiver_, &n_video_frame, nullptr, &metadata_frame, 1000)) {
+			switch (NDIlib_recv_capture_v2(ndi_receiver_, &n_video_frame, nullptr, &metadata_frame, ndi_source_max_wait_ms)) {
 			// No data
 			case NDIlib_frame_type_none:
 				log[log::debug] << "No data received.";
@@ -252,7 +253,7 @@ void NDIInput::run() {
 				}
 				// Check queue - it too large it's time to drop frames
 				NDIlib_recv_get_queue(ndi_receiver_, &recv_queue);
-				if (recv_queue.video_frames > 3) {
+				if (recv_queue.video_frames > ndi_source_max_queue_frames) {
 					NDIlib_recv_free_video_v2(ndi_receiver_, &n_video_frame);
 					log[log::info] << "Loosing video frames, queue: " << recv_queue.video_frames;
 					break;
@@ -304,16 +305,16 @@ void NDIInput::run() {
 			}
 			process_events();
 		}
-
 		log[log::info] << "Stopping receiver";
+
+		// Connect audio thread
+		audio_running_ = false;
+		th.join();
 
 		// Get it out
 		NDIlib_recv_destroy(ndi_receiver_);
 		NDIlib_destroy();
 	}
-
-	// Connect audio thread
-	th.join();
 
 	NDIlib_find_destroy(ndi_finder_);
 }
