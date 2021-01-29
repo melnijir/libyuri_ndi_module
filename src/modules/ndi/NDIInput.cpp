@@ -184,7 +184,10 @@ void NDIInput::sound_receiver() {
 void NDIInput::run() {
 	// Basic finder
 	NDIlib_find_create_t finder_desc;
-	if (extra_ips_.length()) finder_desc.p_extra_ips = extra_ips_.c_str();
+	if (extra_ips_.length()) {
+		log[log::info] << "Found extra IPs \"" << extra_ips_ << "\", adding to finder description.";
+		finder_desc.p_extra_ips = extra_ips_.c_str();
+	}
 	ndi_finder_ = NDIlib_find_create_v2(&finder_desc);
 	if (!ndi_finder_)
 		throw exception::InitializationFailed("Failed to initialize NDI finder.");
