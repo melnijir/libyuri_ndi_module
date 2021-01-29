@@ -76,10 +76,14 @@ last_pan_val_(0),last_tilt_val_(0),last_pan_speed_(0),last_tilt_speed_(0) {
 	audio_pipe_=(audio_enabled_?1:-1);
 	resize(0,1+(audio_enabled_?1:0));
 	// Check if there are extra ips in the config file
-	std::ifstream cfg_file(extra_ips_config_file);
-	nlohmann::json cfg_json;
-	cfg_file >> cfg_json;
-	extra_ips_ = cfg_json.value("extra_ips", "");
+	try	{
+		std::ifstream cfg_file(extra_ips_config_file);
+		nlohmann::json cfg_json;
+		cfg_file >> cfg_json;
+		extra_ips_ = cfg_json.value("extra_ips", "");
+	} catch(const std::exception& e) {
+		log[log::warning] << "This module version was made for Dicaffeine installation but cannot find it's default configuration file.";
+	}
 }
 
 NDIInput::~NDIInput() {
@@ -91,10 +95,15 @@ std::vector<core::InputDeviceInfo> NDIInput::enumerate() {
 	std::vector<std::string> main_param_order = {"address"};
 
 	// Check if there are extra ips in the config file
-	std::ifstream cfg_file(extra_ips_config_file);
-	nlohmann::json cfg_json;
-	cfg_file >> cfg_json;
-	auto extra_ips = cfg_json.value("extra_ips", "");
+	std::string extra_ips;
+	try {
+		std::ifstream cfg_file(extra_ips_config_file);
+		nlohmann::json cfg_json;
+		cfg_file >> cfg_json;
+		extra_ips = cfg_json.value("extra_ips", "");
+	} catch(const std::exception& e) {
+		std::cerr << "ndi_input: This module version was made for Dicaffeine installation but cannot find it's default configuration file." << std::endl;
+	}
 
 	// Create a finder
 	NDIlib_find_create_t finder_desc;
