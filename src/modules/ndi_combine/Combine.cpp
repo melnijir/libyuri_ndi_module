@@ -85,10 +85,6 @@ std::vector<core::pFrame> Combine::do_single_step(std::vector<core::pFrame> fram
 			//frames[i].reset();
 			return {};
 		}
-		if (frames[i]->get_resolution() != resolution) {
-			log[log::warning] << "Wrong size for frame in pipe " << i << " (expected " << resolution << ", got: " << frames[i]->get_resolution() << ")";
-			return {};
-		}
 	}
 	core::pRawVideoFrame output = core::RawVideoFrame::create_empty(format,{width*x_, height*y_}, true);
 	uint8_t* out = PLANE_RAW_DATA(output,0);
@@ -98,9 +94,16 @@ std::vector<core::pFrame> Combine::do_single_step(std::vector<core::pFrame> fram
 	for (size_t idx_y=0;idx_y<y_;++idx_y) {
 		for (size_t idx_x=0;idx_x<x_;++idx_x) {
 			const uint8_t* raw_src = PLANE_RAW_DATA(frames[idx],0);
-			for (size_t line=0;line<height;++line) {
-				std::copy(raw_src+line*sub_line_width,
-						raw_src+(line+1)*sub_line_width,
+			size_t line_skip = 0;
+			size_t sub_line_width_curr = bpp*frames[idx]->get_width()/8;
+			if (sub_line_width_curr > sub_line_width) {
+				line_skip = sub_line_width_curr-sub_line_width;
+				sub_line_width_curr = sub_line_width;
+			}
+			size_t height_curr = height < frames[idx]->get_height() ? height : frames[idx]->get_height();
+			for (size_t line=0;line<height_curr;++line) {
+				std::copy(raw_src+line*sub_line_width_curr+line*line_skip,
+						raw_src+(line+1)*sub_line_width_curr+line*line_skip,
 						out+(idx_y*height+line)*line_width+idx_x*sub_line_width);
 			}
 			idx++;
