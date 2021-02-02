@@ -15,6 +15,7 @@
 #include "yuri/core/utils.h"
 
 #include "../common/utils.h"
+#include "../../../libs/json.hpp"
 
 #include <cassert>
 
@@ -25,6 +26,9 @@ using namespace std::chrono;
 
 
 namespace {
+
+const char*  extra_ips_config_file = "/etc/dicaffeine/dserver.json";
+
 float get_event_float(const event::pBasicEvent& event) {
 	switch(event->get_type()) {
 	case event::event_type_t::integer_event:
@@ -35,6 +39,7 @@ float get_event_float(const event::pBasicEvent& event) {
 		return 0;
 	}
 }
+
 }
 
 IOTHREAD_GENERATOR(NDIInput)
@@ -70,6 +75,15 @@ last_pan_val_(0),last_tilt_val_(0),last_pan_speed_(0),last_tilt_speed_(0) {
 	// Audio pipe is for further multichannel implementation
 	audio_pipe_=(audio_enabled_?1:-1);
 	resize(0,1+(audio_enabled_?1:0));
+	// Check if there are extra ips in the config file
+	try	{
+		std::ifstream cfg_file(extra_ips_config_file);
+		nlohmann::json cfg_json;
+		cfg_file >> cfg_json;
+		extra_ips_ = cfg_json.value("extra_ips", "");
+	} catch(const std::exception& e) {
+		log[log::warning] << "This module version was made for Dicaffeine installation but cannot find it's default configuration file.";
+	}
 }
 
 NDIInput::~NDIInput() {
@@ -80,8 +94,20 @@ std::vector<core::InputDeviceInfo> NDIInput::enumerate() {
 	std::vector<core::InputDeviceInfo> devices;
 	std::vector<std::string> main_param_order = {"address"};
 
+	// Check if there are extra ips in the config file
+	std::string extra_ips;
+	try {
+		std::ifstream cfg_file(extra_ips_config_file);
+		nlohmann::json cfg_json;
+		cfg_file >> cfg_json;
+		extra_ips = cfg_json.value("extra_ips", "");
+	} catch(const std::exception& e) {
+		std::cerr << "ndi_input: This module version was made for Dicaffeine installation but cannot find it's default configuration file." << std::endl;
+	}
+
 	// Create a finder
-	const NDIlib_find_create_t finder_desc;
+	NDIlib_find_create_t finder_desc;
+	if (extra_ips.length()) finder_desc.p_extra_ips = extra_ips.c_str();
 	NDIlib_find_instance_t ndi_finder = NDIlib_find_create_v2(&finder_desc);
 	if (!ndi_finder)
 		throw exception::InitializationFailed("Failed to initialize NDI fidner.");
@@ -157,7 +183,11 @@ void NDIInput::sound_receiver() {
 
 void NDIInput::run() {
 	// Basic finder
-	const NDIlib_find_create_t finder_desc;
+	NDIlib_find_create_t finder_desc;
+	if (extra_ips_.length()) {
+		log[log::info] << "Found extra IPs \"" << extra_ips_ << "\", adding to finder description.";
+		finder_desc.p_extra_ips = extra_ips_.c_str();
+	}
 	ndi_finder_ = NDIlib_find_create_v2(&finder_desc);
 	if (!ndi_finder_)
 		throw exception::InitializationFailed("Failed to initialize NDI finder.");

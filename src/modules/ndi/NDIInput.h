@@ -40,6 +40,7 @@ private:
 
 	std::string stream_;
 	std::string backup_;
+	std::string extra_ips_;
 	std::string format_;
 	int nodata_timout_;
 	bool audio_enabled_;
