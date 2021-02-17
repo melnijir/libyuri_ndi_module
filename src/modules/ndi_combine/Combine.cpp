@@ -76,7 +76,7 @@ std::vector<core::pFrame> Combine::do_single_step(std::vector<core::pFrame> fram
 	}
 
 	size_t bpp = fi.planes[0].bit_depth.first/fi.planes[0].bit_depth.second;
-	const resolution_t resolution = frames[0]->get_resolution();
+	// const resolution_t resolution = frames[0]->get_resolution();
 	const size_t width  = frames[0]->get_width();
 	const size_t height = frames[0]->get_height();
 	for (size_t i=1;i<frames_no;++i) {

@@ -19,7 +19,7 @@ namespace yuri {
 namespace ndi {
 
 const size_t ndi_source_max_wait_ms = 250;
-const size_t ndi_source_max_queue_frames = 3;
+const int ndi_source_max_queue_frames = 3;
 
 class NDIInput:public core::IOThread, public event::BasicEventProducer, public event::BasicEventConsumer {
 public:
