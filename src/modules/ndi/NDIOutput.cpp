@@ -133,7 +133,7 @@ bool NDIOutput::step() {
 	NDIlib_tally_t NDI_tally;
 	NDIlib_send_get_tally(pNDI_send_, &NDI_tally, 0);
 	NDI_video_frame.p_data = PLANE_RAW_DATA(vframe_to_send_,0);
-	NDIlib_send_send_video_async_v2(pNDI_send_, &NDI_video_frame);
+	NDIlib_send_send_video_v2(pNDI_send_, &NDI_video_frame);
 	return true;
 }
 
