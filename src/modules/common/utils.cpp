@@ -29,7 +29,7 @@ std::map<NDIlib_FourCC_type_e, yuri::format_t> pixel_format_map = {
 	{NDIlib_FourCC_type_YV12,	yuv420p},
 	
 	{NDIlib_FourCC_type_UYVY,	uyvy422},
-	{NDIlib_FourCC_type_UYVA,	yuva4444},
+	{NDIlib_FourCC_type_UYVA,	uyvy422},
 
 	{NDIlib_FourCC_type_BGRA,	bgra32},
 	{NDIlib_FourCC_type_BGRX,	bgra32},
