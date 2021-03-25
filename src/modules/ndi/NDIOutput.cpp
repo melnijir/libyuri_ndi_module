@@ -39,7 +39,7 @@ core::Parameters NDIOutput::configure() {
 NDIOutput::NDIOutput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,1,0,std::string("NDIOutput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_("Dicaffeine"),audio_enabled_(false),fps_(60),max_time_(30_minutes),licence_("") {
+stream_("Dicaffeine"),audio_enabled_(false),fps_(0),max_time_(30_minutes),licence_("") {
 	IOTHREAD_INIT(parameters)
 	set_latency(1_ms);
 	if (audio_enabled_) resize(2,0);
@@ -118,10 +118,10 @@ bool NDIOutput::step() {
 	NDI_video_frame.yres = vframe_to_send_->get_height();
 	NDI_video_frame.FourCC = yuri_format_to_ndi(vframe_to_send_->get_format());
 	NDI_video_frame.line_stride_in_bytes = 0; // autodetect
-	if (fps_ == std::ceil(fps_)) {
+	if (fps_ > 0 && fps_ == std::ceil(fps_)) {
 		NDI_video_frame.frame_rate_N = 1000*fps_;
 		NDI_video_frame.frame_rate_D = 1000;
-	} else {
+	} else if (fps_ > 0) {
 		int fps = std::ceil(fps_);
 		NDI_video_frame.frame_rate_N = 1000*fps;
 		NDI_video_frame.frame_rate_D = 1001;
