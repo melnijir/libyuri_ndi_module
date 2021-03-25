@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-PROJECT(yuri2_ndi VERSION 0.0.19 LANGUAGES CXX C)
+PROJECT(yuri2_ndi VERSION 0.0.20 LANGUAGES CXX C)
 
 OPTION (BUILD_SHARED_LIBS "Build shared libraries." ON)
 
