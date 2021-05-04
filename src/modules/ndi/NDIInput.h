@@ -46,6 +46,7 @@ private:
 	bool audio_enabled_;
 	bool audio_running_;
 	bool lowres_enabled_;
+	int reference_level_;
 	position_t audio_pipe_;
 
 	Licence* lic_;

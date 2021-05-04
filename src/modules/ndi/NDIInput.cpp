@@ -51,6 +51,7 @@ core::Parameters NDIInput::configure() {
 	p["format"]["Which format to prefer [fastest/rgb/yuv]."]="fastest";
 	p["audio"]["Set to true if audio should be received."]=false;
 	p["lowres"]["Set to true if video should be received in low resolution."]=false;
+	p["reference_level"]["The audio reference level in dB. [-20dB - 20dB]"]=false;
 	p["event_time"]["How often will be events fired."]=1.0;
 	p["licence"]["Sets licence file location"]="";
 	return p;
@@ -59,7 +60,7 @@ core::Parameters NDIInput::configure() {
 NDIInput::NDIInput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,0,1,std::string("NDIInput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),lowres_enabled_(false),audio_pipe_(-1),
+stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),lowres_enabled_(false),reference_level_(0),audio_pipe_(-1),
 licence_(""),licence_required_(false),max_time_(30_minutes),event_time_(1_s),ptz_supported_(false),
 last_pan_val_(0),last_tilt_val_(0),last_pan_speed_(0),last_tilt_speed_(0) {
 	IOTHREAD_INIT(parameters)
@@ -162,7 +163,7 @@ void NDIInput::sound_receiver() {
 		// Audio data
 		case NDIlib_frame_type_audio:
 			log[log::debug] << "Audio data received: " << n_audio_frame.no_samples << " samples, " << n_audio_frame.no_channels << " channels.";
-			n_audio_frame_16bpp_interleaved.reference_level = 20;	// 20dB of headroom
+			n_audio_frame_16bpp_interleaved.reference_level = reference_level_;	// 0dB of headroom
 			n_audio_frame_16bpp_interleaved.p_data = new short[n_audio_frame.no_samples*n_audio_frame.no_channels];
 			// Convert it
 			NDIlib_util_audio_to_interleaved_16s_v2(&n_audio_frame, &n_audio_frame_16bpp_interleaved);
@@ -463,6 +464,7 @@ bool NDIInput::set_param(const core::Parameter &param) {
 			(format_, "format")
 			(audio_enabled_, "audio")
 			(lowres_enabled_, "lowres")
+			(reference_level_, "reference_level")
 			(licence_, "licence")
 			)
 		return true;
