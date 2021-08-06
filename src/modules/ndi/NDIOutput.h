@@ -12,8 +12,7 @@
 #include "yuri/core/frame/RawVideoFrame.h"
 #include "yuri/core/frame/RawAudioFrame.h"
 
-#include "Licence.h"
-#include <Processing.NDI.Lib.h>
+#include <Processing.NDI.Advanced.h>
 
 namespace yuri {
 
@@ -43,15 +42,9 @@ private:
 
 	NDIlib_send_instance_t pNDI_send_;
 
-	duration_t max_time_;
-	Timer licence_timer_;
-
-	Licence* lic_;
-	LicenceCaps caps_;
-	std::string licence_;
-
 	core::pRawAudioFrame aframe_to_send_;
 	core::pRawVideoFrame vframe_to_send_;
+	core::pVideoFrame vcmpframe_to_send_;
 };
 
 }

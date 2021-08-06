@@ -53,23 +53,16 @@ core::Parameters NDIInput::configure() {
 	p["lowres"]["Set to true if video should be received in low resolution."]=false;
 	p["reference_level"]["The audio reference level in dB. [-20dB - 20dB]"]=false;
 	p["event_time"]["How often will be events fired."]=1.0;
-	p["licence"]["Sets licence file location"]="";
 	return p;
 }
 
 NDIInput::NDIInput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,0,1,std::string("NDIInput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),lowres_enabled_(false),reference_level_(0),audio_pipe_(-1),
-licence_(""),licence_required_(false),max_time_(30_minutes),event_time_(1_s),ptz_supported_(false),
+stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),lowres_enabled_(false),
+reference_level_(0),audio_pipe_(-1),event_time_(1_s),ptz_supported_(false),
 last_pan_val_(0),last_tilt_val_(0),last_pan_speed_(0),last_tilt_speed_(0) {
 	IOTHREAD_INIT(parameters)
-	// Check licence
-	lic_ = &Licence::getInstance();
-	lic_->set_licence_file(licence_);
-	caps_ = lic_->get_licence();
-	log[log::info] << "Got licence \"name\": \"" << caps_.name << "\", \"streams\": " << caps_.streams << ", \"outputs\": " << caps_.outputs << ", \"resolution\": " << caps_.resolution << ", \"date\": \"" << caps_.date << "\"" << ", \"level\": \"" << caps_.level << "\"";
-	if (caps_.streams_given > 1) licence_required_ = true;
 	// Init NDI
 	if (!NDIlib_initialize())
 		throw exception::InitializationFailed("Failed to initialize NDI input.");
@@ -193,8 +186,7 @@ void NDIInput::run() {
 	if (!ndi_finder_)
 		throw exception::InitializationFailed("Failed to initialize NDI finder.");
 
-	// Start timers (licence and events)
-	licence_timer_.reset();
+	// Start event timer
 	event_timer_.reset();
 
 	while (still_running()) {
@@ -299,10 +291,6 @@ void NDIInput::run() {
 				y_video_frame->set_timestamp(y_timestamp);
 				emit_event("timecode", y_timecode);
 				emit_event("timestamp", y_timestamp);
-				// Quit if licence is required and we are out of time
-				if (licence_required_ && caps_.level == "unlicensed" && licence_timer_.get_duration() > max_time_) {
-					request_end(core::yuri_exit_interrupted);
-				}
 				// Push frame out
 				push_frame(0,y_video_frame);
 				break;
@@ -367,7 +355,6 @@ bool NDIInput::do_process_event(const std::string& event_name, const event::pBas
     } else {
 		if (!ptz_supported_)
 			return false;
-		licence_required_ = true;
 		if (iequals(event_name,"recall_preset")) {
 			if (event->get_type() == event::event_type_t::vector_event) {
 				auto val = event::get_value<event::EventVector>(event);
@@ -464,9 +451,7 @@ bool NDIInput::set_param(const core::Parameter &param) {
 			(format_, "format")
 			(audio_enabled_, "audio")
 			(lowres_enabled_, "lowres")
-			(reference_level_, "reference_level")
-			(licence_, "licence")
-			)
+			(reference_level_, "reference_level"))
 		return true;
 	return IOThread::set_param(param);
 }

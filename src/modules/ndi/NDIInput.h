@@ -11,9 +11,7 @@
 #include "yuri/event/BasicEventConsumer.h"
 #include "yuri/event/BasicEventProducer.h"
 
-#include "Licence.h"
-
-#include <Processing.NDI.Lib.h>
+#include <Processing.NDI.Advanced.h>
 
 namespace yuri {
 namespace ndi {
@@ -49,15 +47,8 @@ private:
 	int reference_level_;
 	position_t audio_pipe_;
 
-	Licence* lic_;
-	LicenceCaps caps_;
-	std::string licence_;
-	bool licence_required_;
-	duration_t max_time_;
-	Timer licence_timer_;
 	duration_t event_time_;
 	Timer event_timer_;
-
 
 	NDIlib_recv_instance_t ndi_receiver_;
 	NDIlib_find_instance_t ndi_finder_;

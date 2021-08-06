@@ -8,6 +8,8 @@
 #include "yuri/core/frame/RawVideoFrame.h"
 #include "yuri/core/frame/raw_frame_types.h"
 #include "yuri/core/frame/raw_frame_params.h"
+#include "yuri/core/frame/compressed_frame_types.h"
+#include "yuri/core/frame/compressed_frame_params.h"
 #include "yuri/core/frame/RawAudioFrame.h"
 #include "yuri/core/frame/raw_audio_frame_types.h"
 #include "yuri/core/frame/raw_audio_frame_params.h"
@@ -31,7 +33,6 @@ core::Parameters NDIOutput::configure() {
 	core::Parameters p = IOThread::configure();
 	p["stream"]["Name of the stream to send."]="Dicaffeine";
 	p["audio"]["Set to true if audio should be send."]=false;
-	p["licence"]["Sets licence file location"]="";
 	p["fps"]["Sets fps indicator sent in the stream"]="";
 	return p;
 }
@@ -39,15 +40,10 @@ core::Parameters NDIOutput::configure() {
 NDIOutput::NDIOutput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,1,0,std::string("NDIOutput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_("Dicaffeine"),audio_enabled_(false),fps_(0),max_time_(30_minutes),licence_("") {
+stream_("Dicaffeine"),audio_enabled_(false),fps_(0) {
 	IOTHREAD_INIT(parameters)
 	set_latency(1_ms);
 	if (audio_enabled_) resize(2,0);
-	// Check licence
-	lic_ = &Licence::getInstance();
-	lic_->set_licence_file(licence_);
-	caps_ = lic_->get_licence();
-	log[log::info] << "Got licence \"name\": \"" << caps_.name << "\", \"streams\": " << caps_.streams << ", \"outputs\": " << caps_.outputs << ", \"resolution\": " << caps_.resolution << ", \"date\": \"" << caps_.date << "\"" << ", \"level\": \"" << caps_.level << "\"";
 	// Init NDI
 	if (!NDIlib_initialize())
 		throw exception::InitializationFailed("Failed to initialize NDI output.");
@@ -78,7 +74,6 @@ void NDIOutput::run() {
     NDI_connection_type.timecode        = NDIlib_send_timecode_synthesize;
     NDI_connection_type.p_data          = (char*)p_connection_str;	// should be const in header file
 	NDIlib_send_add_connection_metadata(pNDI_send_, &NDI_connection_type);
-	licence_timer_.reset();
 	std::thread th(&NDIOutput::sound_sender, this);
 	IOThread::run();
 	stop_stream();
@@ -103,37 +98,43 @@ void NDIOutput::sound_sender() {
 }
 
 bool NDIOutput::step() {
-	if (!NDIlib_send_get_no_connections(pNDI_send_, 10000)) {
-		vframe_to_send_ = std::dynamic_pointer_cast<core::RawVideoFrame>(pop_frame(0));
+	// if (!NDIlib_send_get_no_connections(pNDI_send_, 1000)) {
+	// 	vframe_to_send_ = std::dynamic_pointer_cast<core::RawVideoFrame>(pop_frame(0));
+	// 	streaming_enabled_ = false;
+	// 	return true;
+	// } else {
+		streaming_enabled_ = true;
+	// }
+	auto frame_to_send = pop_frame(0);
+	if (!frame_to_send)
+		return true;
+	if (frame_to_send->get_format() == yuri::core::compressed_frame::h264) {
+		vcmpframe_to_send_ = std::dynamic_pointer_cast<core::VideoFrame>(frame_to_send);
+		log[log::info] << "Compressed frame with res " << vcmpframe_to_send_->get_resolution() << " and " << core::compressed_frame::get_format_name(vcmpframe_to_send_->get_format());
 		streaming_enabled_ = false;
 		return true;
 	} else {
-		streaming_enabled_ = true;
+		vframe_to_send_ = std::dynamic_pointer_cast<core::RawVideoFrame>(frame_to_send);
+		if (!vframe_to_send_)
+			return true;
+		NDIlib_video_frame_v2_t NDI_video_frame;
+		NDI_video_frame.xres = vframe_to_send_->get_width();
+		NDI_video_frame.yres = vframe_to_send_->get_height();
+		NDI_video_frame.FourCC = yuri_format_to_ndi(vframe_to_send_->get_format());
+		NDI_video_frame.line_stride_in_bytes = 0; // autodetect
+		if (fps_ > 0 && fps_ == std::ceil(fps_)) {
+			NDI_video_frame.frame_rate_N = 1000*fps_;
+			NDI_video_frame.frame_rate_D = 1000;
+		} else if (fps_ > 0) {
+			int fps = std::ceil(fps_);
+			NDI_video_frame.frame_rate_N = 1000*fps;
+			NDI_video_frame.frame_rate_D = 1001;
+		}
+		NDIlib_tally_t NDI_tally;
+		NDIlib_send_get_tally(pNDI_send_, &NDI_tally, 0);
+		NDI_video_frame.p_data = PLANE_RAW_DATA(vframe_to_send_,0);
+		NDIlib_send_send_video_v2(pNDI_send_, &NDI_video_frame);
 	}
-	vframe_to_send_ = std::dynamic_pointer_cast<core::RawVideoFrame>(pop_frame(0));
-	if (!vframe_to_send_)
-		return true;
-	NDIlib_video_frame_v2_t NDI_video_frame;
-	NDI_video_frame.xres = vframe_to_send_->get_width();
-	NDI_video_frame.yres = vframe_to_send_->get_height();
-	NDI_video_frame.FourCC = yuri_format_to_ndi(vframe_to_send_->get_format());
-	NDI_video_frame.line_stride_in_bytes = 0; // autodetect
-	if (fps_ > 0 && fps_ == std::ceil(fps_)) {
-		NDI_video_frame.frame_rate_N = 1000*fps_;
-		NDI_video_frame.frame_rate_D = 1000;
-	} else if (fps_ > 0) {
-		int fps = std::ceil(fps_);
-		NDI_video_frame.frame_rate_N = 1000*fps;
-		NDI_video_frame.frame_rate_D = 1001;
-	}
-	if (caps_.level == "unlicensed" && licence_timer_.get_duration() > max_time_) {
-		request_end(core::yuri_exit_interrupted);
-		return true;
-	}
-	NDIlib_tally_t NDI_tally;
-	NDIlib_send_get_tally(pNDI_send_, &NDI_tally, 0);
-	NDI_video_frame.p_data = PLANE_RAW_DATA(vframe_to_send_,0);
-	NDIlib_send_send_video_v2(pNDI_send_, &NDI_video_frame);
 	return true;
 }
 
@@ -159,7 +160,6 @@ bool NDIOutput::set_param(const core::Parameter &param) {
 	if (assign_parameters(param)
 			(stream_, "stream")
 			(audio_enabled_, "audio")
-			(licence_, "licence")
 			(fps_, "fps")
 			)
 		return true;
