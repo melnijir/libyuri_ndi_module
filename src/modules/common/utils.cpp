@@ -23,13 +23,13 @@ std::vector<byte> str_to_bin(std::string text) {
     return data;
 }
 
-std::map<NDIlib_FourCC_type_e, yuri::format_t> pixel_format_map = {
-	{NDIlib_FourCC_type_I420,	yuv420p},
+std::map<NDIlib_FourCC_type_e, yuri::format_t> ndi_to_yuri_pixmap = {
+	{NDIlib_FourCC_type_I420,	yuv420p}, // Only this one is correct yuv420p, others wont work fine
 	{NDIlib_FourCC_type_NV12,	yuv420p},
 	{NDIlib_FourCC_type_YV12,	yuv420p},
 	
 	{NDIlib_FourCC_type_UYVY,	uyvy422},
-	{NDIlib_FourCC_type_UYVA,	uyvy422},
+	{NDIlib_FourCC_type_UYVA,	uyvy422}, // That is very strange, but this is a somehow planar format with uyvy422 and alpha separated
 
 	{NDIlib_FourCC_type_BGRA,	bgra32},
 	{NDIlib_FourCC_type_BGRX,	bgra32},
@@ -37,16 +37,22 @@ std::map<NDIlib_FourCC_type_e, yuri::format_t> pixel_format_map = {
 	{NDIlib_FourCC_type_RGBX,	rgba32},
 };
 
+std::map<yuri::format_t, NDIlib_FourCC_type_e> yuri_to_ndi_pixmap = {
+	{yuv420p, NDIlib_FourCC_type_I420},
+	{uyvy422, NDIlib_FourCC_type_UYVY},
+	{bgra32,  NDIlib_FourCC_type_BGRA},
+	{rgba32,  NDIlib_FourCC_type_RGBA},
+};
+
 yuri::format_t ndi_format_to_yuri (NDIlib_FourCC_type_e fmt) {
-	auto it = pixel_format_map.find(fmt);
-	if (it == pixel_format_map.end()) throw yuri::exception::Exception("No Yuri format found.");
+	auto it = ndi_to_yuri_pixmap.find(fmt);
+	if (it == ndi_to_yuri_pixmap.end()) throw yuri::exception::Exception("No Yuri format found.");
 	return it->second;
 }
 
 
 NDIlib_FourCC_type_e yuri_format_to_ndi(yuri::format_t fmt) {
-	for (auto f: pixel_format_map) {
-		if (f.second == fmt) return f.first;
-	}
-	throw yuri::exception::Exception("No NDI format found.");
+	auto it = yuri_to_ndi_pixmap.find(fmt);
+	if (it == yuri_to_ndi_pixmap.end()) throw yuri::exception::Exception("No NDI format found.");
+	return it->second;
 }
