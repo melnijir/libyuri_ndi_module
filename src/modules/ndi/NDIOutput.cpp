@@ -42,7 +42,7 @@ NDIOutput::NDIOutput(log::Log &log_,core::pwThreadBase parent, const core::Param
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
 stream_("Dicaffeine"),audio_enabled_(false),fps_(0) {
 	IOTHREAD_INIT(parameters)
-	set_latency(1_ms);
+	set_latency(10_us);
 	if (audio_enabled_) resize(2,0);
 	// Init NDI
 	if (!NDIlib_initialize())
@@ -92,7 +92,7 @@ void NDIOutput::sound_sender() {
 			NDIlib_util_send_send_audio_interleaved_16s(pNDI_send_, &NDI_audio_frame);
 			aframe_to_send_ = nullptr;
 		} else {
-			ThreadBase::sleep(1_ms);
+			ThreadBase::sleep(10_us);
 		}
 	}
 }
