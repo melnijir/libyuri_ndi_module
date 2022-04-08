@@ -46,6 +46,7 @@ private:
 	bool lowres_enabled_;
 	int reference_level_;
 	position_t audio_pipe_;
+	std::atomic<size_t> stream_fail_;
 
 	duration_t event_time_;
 	Timer event_timer_;
