@@ -60,7 +60,7 @@ NDIInput::NDIInput(log::Log &log_,core::pwThreadBase parent, const core::Paramet
 :core::IOThread(log_,parent,0,1,std::string("NDIInput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
 stream_(""),backup_(""),format_("fastest"),audio_enabled_(false),lowres_enabled_(false),
-reference_level_(0),audio_pipe_(-1),event_time_(1_s),ptz_supported_(false),
+reference_level_(0),audio_pipe_(-1),stream_fail_(0),event_time_(1_s),ptz_supported_(false),
 last_pan_val_(0),last_tilt_val_(0),last_pan_speed_(0),last_tilt_speed_(0) {
 	IOTHREAD_INIT(parameters)
 	// Init NDI
@@ -156,6 +156,7 @@ void NDIInput::sound_receiver() {
 		// Audio data
 		case NDIlib_frame_type_audio:
 			log[log::debug] << "Audio data received: " << n_audio_frame.no_samples << " samples, " << n_audio_frame.no_channels << " channels.";
+			stream_fail_ = 0;
 			n_audio_frame_16bpp_interleaved.reference_level = reference_level_;	// 0dB of headroom
 			n_audio_frame_16bpp_interleaved.p_data = new short[n_audio_frame.no_samples*n_audio_frame.no_channels];
 			// Convert it
@@ -170,6 +171,7 @@ void NDIInput::sound_receiver() {
 		// Everything else
 		default:
 			log[log::debug] << "Unknown message found.";
+			stream_fail_ = 0;
 			break;
 		}
 	}
@@ -244,13 +246,12 @@ void NDIInput::run() {
 		NDIlib_recv_send_metadata(ndi_receiver_, &enable_hw_accel);
 
 		// Ready to play
-		int stream_fail = 0;
 		log[log::info] << "Receiving started";
 		// Start audio receiver
 		audio_running_ = true;
 		std::thread th(&NDIInput::sound_receiver, this);
 		// Start video receiver
-		while (still_running() && stream_fail++ < 5) {
+		while (still_running() && stream_fail_++ < 5) {
 			NDIlib_video_frame_v2_t n_video_frame;
 			NDIlib_metadata_frame_t metadata_frame;
 			NDIlib_recv_queue_t recv_queue;
@@ -269,7 +270,7 @@ void NDIInput::run() {
 			// Video data
 			case NDIlib_frame_type_video:
 				log[log::debug] << "Video data received: " << n_video_frame.xres << "x" << n_video_frame.yres;
-				stream_fail = 0;
+				stream_fail_ = 0;
 				if (!stream_running) {
 					stream_running = true;
 					emit_event("stream_on");
@@ -297,12 +298,13 @@ void NDIInput::run() {
 			// Meta data
 			case NDIlib_frame_type_metadata:
 				log[log::debug] << "Metadata received.";
-				stream_fail = 0;
+				stream_fail_ = 0;
 				NDIlib_recv_free_metadata(ndi_receiver_, &metadata_frame);
 				break;
 			// There is a status change on the receiver (e.g. new web interface)
 			case NDIlib_frame_type_status_change:
 				log[log::debug] << "Sender connection status changed.";
+				stream_fail_ = 0;
 				if (NDIlib_recv_ptz_is_supported(ndi_receiver_)) {
 					log[log::info] << "Sender supports PTZ, enabling events.";
 					ptz_supported_ = true;
@@ -310,12 +312,11 @@ void NDIInput::run() {
 					log[log::info] << "Sender doest not support PTZ, disabling events.";
 					ptz_supported_ = false;
 				}
-				stream_fail = 0;
 				break;
 			// Everything else
 			default:
 				log[log::debug] << "Unknown message found.";
-				stream_fail = 0;
+				stream_fail_ = 0;
 				break;
 			}
 			if (event_timer_.get_duration() > event_time_) {
