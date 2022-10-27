@@ -58,11 +58,23 @@ SET (TARGET_MODULE_PATH lib/yuri2/)
 add_subdirectory(src)
 
 
+#################################################################
+# Static build for Dicaffeine
+#################################################################
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_EXE_LINKER_FLAGS "-static")
+
+
+#################################################################
+# Specify defaults for packaging into a debian package
+#################################################################
+
 SET(CPACK_GENERATOR "DEB")
 SET(CPACK_PACKAGE_VENDOR "Melnikoff")
 SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Kafe")
 
-SET(CPACK_DEBIAN_PACKAGE_DEPENDS "yuri2, ndi, avahi-daemon")
+SET(CPACK_DEBIAN_PACKAGE_DEPENDS "yuri2, ndi, avahi-daemon libavahi-client3")
 # Explicitely setting verson for comatibility with old cmake
 SET(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 SET(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
