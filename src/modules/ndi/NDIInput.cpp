@@ -395,7 +395,7 @@ bool NDIInput::do_process_event(const std::string& event_name, const event::pBas
 			if (event->get_type() == event::event_type_t::vector_event) {
 				auto val = event::get_value<event::EventVector>(event);
 				if(val.size() < 2) return false;
-				last_pan_speed_ = event::lex_cast_value<float>(val[0]);
+				last_pan_speed_ = 0-event::lex_cast_value<float>(val[0]);
 				last_tilt_speed_ = event::lex_cast_value<float>(val[1]);
 				NDIlib_recv_ptz_pan_tilt_speed(ndi_receiver_, last_pan_speed_, last_tilt_speed_);
 			} else {
