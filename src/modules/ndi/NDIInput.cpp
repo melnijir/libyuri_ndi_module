@@ -184,14 +184,14 @@ void NDIInput::run() {
 		log[log::info] << "Found extra IPs \"" << extra_ips_ << "\", adding to finder description.";
 		finder_desc.p_extra_ips = extra_ips_.c_str();
 	}
-	ndi_finder_ = NDIlib_find_create_v2(&finder_desc);
-	if (!ndi_finder_)
-		throw exception::InitializationFailed("Failed to initialize NDI finder.");
-
 	// Start event timer
 	event_timer_.reset();
 
 	while (still_running()) {
+		// Init NDI finder
+		ndi_finder_ = NDIlib_find_create_v2(&finder_desc);
+		if (!ndi_finder_)
+			throw exception::InitializationFailed("Failed to initialize NDI finder.");
 		// Keep and update stream status
 		bool stream_running = false;
 		emit_event("stream_off");
@@ -251,7 +251,7 @@ void NDIInput::run() {
 		audio_running_ = true;
 		std::thread th(&NDIInput::sound_receiver, this);
 		// Start video receiver
-		while (still_running() && stream_fail_++ < 5) {
+		while (still_running() && stream_fail_++ < 20) {
 			NDIlib_video_frame_v2_t n_video_frame;
 			NDIlib_metadata_frame_t metadata_frame;
 			NDIlib_recv_queue_t recv_queue;
@@ -334,9 +334,11 @@ void NDIInput::run() {
 		// Get it out
 		NDIlib_recv_destroy(ndi_receiver_);
 		NDIlib_destroy();
+		// Reset fails
+		stream_fail_ = 0;
+		// Destroy finder
+		NDIlib_find_destroy(ndi_finder_);
 	}
-
-	NDIlib_find_destroy(ndi_finder_);
 }
 
 void NDIInput::emit_events() {
