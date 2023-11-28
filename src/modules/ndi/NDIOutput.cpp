@@ -34,19 +34,22 @@ core::Parameters NDIOutput::configure() {
 	p["stream"]["Name of the stream to send."]="Dicaffeine";
 	p["audio"]["Set to true if audio should be send."]=false;
 	p["fps"]["Sets fps indicator sent in the stream"]="";
+	p["ndi_path"]["Path where to find the NDI libraries, if empty, env variable NDI_PATH is used."]="";
 	return p;
 }
 
 NDIOutput::NDIOutput(log::Log &log_,core::pwThreadBase parent, const core::Parameters &parameters)
 :core::IOThread(log_,parent,1,0,std::string("NDIOutput")),
 event::BasicEventProducer(log),event::BasicEventConsumer(log),
-stream_("Dicaffeine"),audio_enabled_(false),fps_(0) {
+stream_("Dicaffeine"),audio_enabled_(false),fps_(0),ndi_path_("") {
 	IOTHREAD_INIT(parameters)
 	set_latency(10_us);
 	if (audio_enabled_) resize(2,0);
+	// Load NDI library
+	NDIlib_ = load_ndi_library(ndi_path_);
 	// Init NDI
-	if (!NDIlib_initialize())
-		throw exception::InitializationFailed("Failed to initialize NDI output.");
+	if (!NDIlib_->initialize())
+		throw exception::InitializationFailed("Failed to initialize NDI input.");
 }
 
 NDIOutput::~NDIOutput() {
@@ -58,7 +61,7 @@ void NDIOutput::run() {
 	if (audio_enabled_) {
 		NDI_send_create_desc.clock_audio = true;
 	}
-	pNDI_send_ = NDIlib_send_create(&NDI_send_create_desc);
+	pNDI_send_ = NDIlib_->send_create(&NDI_send_create_desc);
 	if (!pNDI_send_)
 		throw exception::InitializationFailed("Failed to initialize NDI sender.");
 
@@ -73,7 +76,7 @@ void NDIOutput::run() {
     NDI_connection_type.length          = (int)::strlen(p_connection_str);
     NDI_connection_type.timecode        = NDIlib_send_timecode_synthesize;
     NDI_connection_type.p_data          = (char*)p_connection_str;	// should be const in header file
-	NDIlib_send_add_connection_metadata(pNDI_send_, &NDI_connection_type);
+	NDIlib_->send_add_connection_metadata(pNDI_send_, &NDI_connection_type);
 	std::thread th(&NDIOutput::sound_sender, this);
 	IOThread::run();
 	stop_stream();
@@ -89,7 +92,7 @@ void NDIOutput::sound_sender() {
 			NDI_audio_frame.no_samples = aframe_to_send_->get_sample_count();
 			NDI_audio_frame.sample_rate = aframe_to_send_->get_sampling_frequency();
 			NDI_audio_frame.p_data = (short*)aframe_to_send_->data();
-			NDIlib_util_send_send_audio_interleaved_16s(pNDI_send_, &NDI_audio_frame);
+			NDIlib_->util_send_send_audio_interleaved_16s(pNDI_send_, &NDI_audio_frame);
 			aframe_to_send_ = nullptr;
 		} else {
 			ThreadBase::sleep(10_us);
@@ -98,7 +101,7 @@ void NDIOutput::sound_sender() {
 }
 
 bool NDIOutput::step() {
-	// if (!NDIlib_send_get_no_connections(pNDI_send_, 1000)) {
+	// if (!NDIlib_->send_get_no_connections(pNDI_send_, 1000)) {
 	// 	vframe_to_send_ = std::dynamic_pointer_cast<core::RawVideoFrame>(pop_frame(0));
 	// 	streaming_enabled_ = false;
 	// 	return true;
@@ -131,16 +134,16 @@ bool NDIOutput::step() {
 			NDI_video_frame.frame_rate_D = 1001;
 		}
 		NDIlib_tally_t NDI_tally;
-		NDIlib_send_get_tally(pNDI_send_, &NDI_tally, 0);
+		NDIlib_->send_get_tally(pNDI_send_, &NDI_tally, 0);
 		NDI_video_frame.p_data = PLANE_RAW_DATA(vframe_to_send_,0);
-		NDIlib_send_send_video_v2(pNDI_send_, &NDI_video_frame);
+		NDIlib_->send_send_video_v2(pNDI_send_, &NDI_video_frame);
 	}
 	return true;
 }
 
 void NDIOutput::stop_stream() {
-	NDIlib_send_destroy(pNDI_send_);
-	NDIlib_destroy();
+	NDIlib_->send_destroy(pNDI_send_);
+	NDIlib_->destroy();
 }
 
 void NDIOutput::emit_events() {
@@ -161,6 +164,7 @@ bool NDIOutput::set_param(const core::Parameter &param) {
 			(stream_, "stream")
 			(audio_enabled_, "audio")
 			(fps_, "fps")
+			(ndi_path_, "ndi_path")
 			)
 		return true;
 	return IOThread::set_param(param);

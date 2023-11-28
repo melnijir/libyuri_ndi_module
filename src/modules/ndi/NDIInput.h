@@ -11,7 +11,7 @@
 #include "yuri/event/BasicEventConsumer.h"
 #include "yuri/event/BasicEventProducer.h"
 
-#include <Processing.NDI.Advanced.h>
+#include <Processing.NDI.Lib.h>
 
 namespace yuri {
 namespace ndi {
@@ -40,6 +40,7 @@ private:
 	std::string backup_;
 	std::string extra_ips_;
 	std::string format_;
+	std::string ndi_path_;
 	int nodata_timout_;
 	bool audio_enabled_;
 	bool audio_running_;
@@ -51,6 +52,7 @@ private:
 	duration_t event_time_;
 	Timer event_timer_;
 
+	const NDIlib_v5* NDIlib_;
 	NDIlib_recv_instance_t ndi_receiver_;
 	NDIlib_find_instance_t ndi_finder_;
 	bool ptz_supported_;

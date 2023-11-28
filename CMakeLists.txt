@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-PROJECT(yuri2_ndi VERSION 0.1.6 LANGUAGES CXX C)
+PROJECT(yuri2_ndi VERSION 0.1.7 LANGUAGES CXX C)
 
 OPTION (BUILD_SHARED_LIBS "Build shared libraries." ON)
 
@@ -74,7 +74,7 @@ SET(CPACK_GENERATOR "DEB")
 SET(CPACK_PACKAGE_VENDOR "Melnikoff")
 SET(CPACK_DEBIAN_PACKAGE_MAINTAINER "Kafe")
 
-SET(CPACK_DEBIAN_PACKAGE_DEPENDS "yuri2, ndi, avahi-daemon, libavahi-client3")
+SET(CPACK_DEBIAN_PACKAGE_DEPENDS "yuri2, avahi-daemon, libavahi-client3")
 # Explicitely setting verson for comatibility with old cmake
 SET(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
 SET(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})

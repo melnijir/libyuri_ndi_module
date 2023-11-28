@@ -12,7 +12,7 @@
 #include "yuri/core/frame/RawVideoFrame.h"
 #include "yuri/core/frame/RawAudioFrame.h"
 
-#include <Processing.NDI.Advanced.h>
+#include <Processing.NDI.Lib.h>
 
 namespace yuri {
 
@@ -39,7 +39,9 @@ private:
 	bool audio_enabled_;
 	bool streaming_enabled_;
 	float fps_;
+	std::string ndi_path_;
 
+	const NDIlib_v5* NDIlib_;
 	NDIlib_send_instance_t pNDI_send_;
 
 	core::pRawAudioFrame aframe_to_send_;

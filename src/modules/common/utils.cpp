@@ -1,26 +1,27 @@
 #include "utils.h"
 
+#include <stdlib.h>
+#include <dlfcn.h>
+
 using namespace yuri::core::raw_format;
 
-constexpr char strmap[] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                           '8', '9', ':', ';', '<', '=', '>', '?'};
-
-std::string bin_to_str(std::vector<byte> data)
-{
-  std::string text(data.size() * 2, ' ');
-  for (unsigned int i = 0; i < data.size(); ++i) {
-    text[2 * i]     = strmap[(data[i] & 0xF0) >> 4];
-    text[2 * i + 1] = strmap[data[i] & 0x0F];
-  }
-  return text;
-}
-
-std::vector<byte> str_to_bin(std::string text) {
-    std::vector<byte> data(text.length() / 2);
-    for (unsigned int i = 0; i < text.length() / 2; ++i) {
-        data[i] = ((text[2 * i] - 48) << 4) | (text[2 * i + 1] - 48);
-    }
-    return data;
+const NDIlib_v5* load_ndi_library(std::string ndi_path) {
+	// Check if we know the path
+	if (!ndi_path.length()) {
+		auto env_ndi_path = std::getenv("NDI_PATH");
+		ndi_path = env_ndi_path ? env_ndi_path : "";
+	}
+	// Load NDI library
+	void* hNDIlib = dlopen(ndi_path.c_str(), RTLD_LOCAL | RTLD_LAZY);
+	const NDIlib_v5* (*NDIlib_v5_load)(void) = nullptr;
+	if (hNDIlib)
+		*((void**)&NDIlib_v5_load) = dlsym(hNDIlib, "NDIlib_v5_load");
+	if (!NDIlib_v5_load) {
+		if (hNDIlib)
+			dlclose(hNDIlib);
+		throw yuri::exception::Exception("Could not load NDI library version 5 from location: \""+ndi_path+"\", please download the correct library version.");
+	}
+	return NDIlib_v5_load();
 }
 
 std::map<NDIlib_FourCC_type_e, yuri::format_t> ndi_to_yuri_pixmap = {
